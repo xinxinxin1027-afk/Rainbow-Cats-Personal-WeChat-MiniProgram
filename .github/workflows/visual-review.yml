@@ -1,0 +1,40 @@
+name: Android Visual Review
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'app/lib/**'
+      - 'app/test/visual_review_test.dart'
+      - 'miniprogram/**'
+      - '.github/workflows/visual-review.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  nine-page-goldens:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: bash tool/bootstrap_android.sh
+      - name: 生成九页 393x852 视觉检查稿
+        run: flutter test --update-goldens test/visual_review_test.dart
+      - name: 多尺寸碰撞复检
+        run: flutter test test/layout_collision_test.dart
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rainbow-cats-nine-page-visual-review
+          path: app/visual_review/goldens/*.png
+          if-no-files-found: error

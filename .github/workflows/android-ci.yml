@@ -1,0 +1,47 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'miniprogram/**'
+      - '.github/workflows/android-ci.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'miniprogram/**'
+      - '.github/workflows/android-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: 准备 Android 工程和原始资源
+        run: bash tool/bootstrap_android.sh
+      - run: dart format --output=none --set-exit-if-changed lib test integration_test
+      - run: flutter analyze
+      - name: 逻辑与布局测试
+        run: flutter test test/store_test.dart test/layout_collision_test.dart
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rainbow-cats-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
