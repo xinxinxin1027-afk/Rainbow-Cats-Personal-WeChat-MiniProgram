@@ -164,8 +164,20 @@ secret_patterns = [
     re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 ]
+IGNORED_SCAN_PARTS = {
+    ".git",
+    "node_modules",
+    ".dart_tool",
+    "build",
+    ".gradle",
+    ".idea",
+}
 for path in ROOT.rglob("*"):
-    if not path.is_file() or ".git" in path.parts or path.stat().st_size > 2_000_000:
+    if (
+        not path.is_file()
+        or any(part in IGNORED_SCAN_PARTS for part in path.parts)
+        or path.stat().st_size > 2_000_000
+    ):
         continue
     try:
         text = path.read_text(encoding="utf-8")
