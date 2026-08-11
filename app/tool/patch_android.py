@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
+import shutil
 
 APP = Path(__file__).resolve().parents[1]
-REPO = APP.parent
 ANDROID = APP / "android"
 manifest = ANDROID / "app/src/main/AndroidManifest.xml"
 if not manifest.exists():
@@ -25,36 +24,40 @@ if 'android:usesCleartextTraffic=' not in text:
         'android:label="Rainbow Cats"\n        android:usesCleartextTraffic="true"',
         1,
     )
+text = text.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/app_icon"')
+text = text.replace(
+    'android:roundIcon="@mipmap/ic_launcher_round"',
+    'android:roundIcon="@drawable/app_icon"',
+)
 manifest.write_text(text, encoding="utf-8")
 
-# 尽量直接复用原小程序的 PNG 作为 Android 图标；找不到时保留 Flutter 默认图标。
-mini = REPO / "miniprogram"
-if mini.is_dir():
-    pngs = sorted(
-        (
-            path
-            for path in mini.rglob("*.png")
-            if "tabbar" not in path.as_posix().lower()
-            and "node_modules" not in path.parts
-        ),
-        key=lambda path: (
-            0 if any(word in path.name.lower() for word in ("icon", "logo", "avatar")) else 1,
-            len(path.parts),
-            path.as_posix(),
-        ),
-    )
-    if pngs:
-        for density in ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi"):
-            target = ANDROID / f"app/src/main/res/mipmap-{density}/ic_launcher.png"
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(pngs[0], target)
+# App 图标固定使用用户提供的情侣图标，不再从旧小程序资源里猜图。
+icon_source = APP / "assets/app_icon.png"
+if not icon_source.is_file():
+    raise SystemExit("缺少 assets/app_icon.png")
+icon_target = ANDROID / "app/src/main/res/drawable-nodpi/app_icon.png"
+icon_target.parent.mkdir(parents=True, exist_ok=True)
+shutil.copyfile(icon_source, icon_target)
+
+# 根页面已移除小程序顶部栏，系统状态栏改为浅色背景 + 深色图标。
+styles = ANDROID / "app/src/main/res/values/styles.xml"
+if styles.exists():
+    style_text = styles.read_text(encoding="utf-8")
+    if '<item name="android:statusBarColor">#F6F6F6</item>' not in style_text:
+        style_text = style_text.replace(
+            '<style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">',
+            '<style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">\n'
+            '        <item name="android:statusBarColor">#F6F6F6</item>\n'
+            '        <item name="android:windowLightStatusBar">true</item>\n'
+            '        <item name="android:navigationBarColor">#FFFFFF</item>\n'
+            '        <item name="android:windowLightNavigationBar">true</item>',
+            1,
+        )
+    styles.write_text(style_text, encoding="utf-8")
 
 launch = '''<?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item><color android:color="#FF99AA" /></item>
-    <item>
-        <bitmap android:gravity="center" android:src="@mipmap/ic_launcher" />
-    </item>
 </layer-list>
 '''
 for folder in ("drawable", "drawable-v21"):
@@ -62,7 +65,7 @@ for folder in ("drawable", "drawable-v21"):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(launch, encoding="utf-8")
 
-# Android 12+ 启动画面也保持原粉色，不出现突兀白屏。
+# Android 12+ 启动画面继续使用原粉色，图标换成用户提供的正式图标。
 values_v31 = ANDROID / "app/src/main/res/values-v31/styles.xml"
 values_v31.parent.mkdir(parents=True, exist_ok=True)
 values_v31.write_text(
@@ -72,15 +75,46 @@ values_v31.write_text(
         <item name="android:forceDarkAllowed">false</item>
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowSplashScreenBackground">#FF99AA</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">#FF99AA</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/app_icon</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#FFF9FA</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#F6F6F6</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:forceDarkAllowed">false</item>
         <item name="android:colorAccent">#FF99AA</item>
         <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>
+''',
+    encoding="utf-8",
+)
+
+# 根页返回只把任务移到后台，不销毁 Flutter 根路由；再次点桌面图标时保留当前内存状态。
+main_activity = ANDROID / "app/src/main/kotlin/com/xinxinxin1027/rainbow_cats/MainActivity.kt"
+main_activity.parent.mkdir(parents=True, exist_ok=True)
+main_activity.write_text(
+    '''package com.xinxinxin1027.rainbow_cats
+
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+
+class MainActivity : FlutterActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "rainbow_cats/app_lifecycle",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "moveToBackground" -> result.success(moveTaskToBack(true))
+                else -> result.notImplemented()
+            }
+        }
+    }
+}
 ''',
     encoding="utf-8",
 )
