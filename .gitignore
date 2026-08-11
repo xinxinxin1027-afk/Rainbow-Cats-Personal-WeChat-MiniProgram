@@ -1,11 +1,33 @@
+# Node / original mini-program dependencies
 node_modules/
 
-# Flutter Android
+# Flutter / Dart
 app/.dart_tool/
 app/.flutter-plugins
 app/.flutter-plugins-dependencies
 app/.packages
+app/.metadata
+app/.idea/
+app/*.iml
 app/build/
+
+# Android platform source is committed; only local/generated state is ignored
 app/android/.gradle/
 app/android/local.properties
+app/android/key.properties
+
+# Generated visual/build outputs
+app/visual_review/goldens/*.png
 app/visual_review/emulator/*.png
+app/visual_review/release/*
+release/
+
+# Local editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Python tooling cache
+__pycache__/
+*.py[cod]

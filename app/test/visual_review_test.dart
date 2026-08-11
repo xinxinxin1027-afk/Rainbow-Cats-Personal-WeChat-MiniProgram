@@ -1,22 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rainbow_cats/main.dart';
+import 'package:rainbow_cats/src/pages.dart';
+import 'package:rainbow_cats/src/store.dart';
+import 'package:rainbow_cats/src/theme.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-  final pages=<String,Widget Function(AppStore)>{
-    '01_home':(s)=>HomePage(s),'02_mission':(s)=>MissionPage(s),'03_mission_add':(s)=>MissionEditor(s),
-    '04_mission_detail':(s)=>MissionDetail(s,s.missions.first),'05_market':(s)=>MarketPage(s),'06_market_add':(s)=>RewardEditor(s),
-    '07_market_detail':(s)=>RewardDetail(s,s.rewards.first),'08_account':(s)=>AccountPage(s),
-    '09_item_detail':(s)=>ItemDetail(s,Item('i','a','奶茶券','兑换一杯喜欢的奶茶',30)),
-  };
-  for(final e in pages.entries){
-    testWidgets('视觉稿 ${e.key}',(tester)async{
-      await tester.binding.setSurfaceSize(const Size(393,852));
-      final s=AppStore()..ready=true;
-      await tester.pumpWidget(MaterialApp(theme:ThemeData(useMaterial3:false,scaffoldBackgroundColor:bg),home:RepaintBoundary(key:const Key('shot'),child:e.value(s))));
-      await tester.pump();
-      await expectLater(find.byKey(const Key('shot')),matchesGoldenFile('../visual_review/goldens/${e.key}.png'));
-    });
-  }
+  testWidgets('生成十二页视觉基线', (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(393, 852));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final RainbowStore store = RainbowStore(
+      MemoryRainbowStorage(),
+      clock: () => DateTime(2026, 8, 10, 12),
+    )..seedForTest();
+    final List<Widget> pages = buildVisualPages(store);
+    for (int index = 0; index < pages.length; index += 1) {
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: RainbowTheme.light,
+          home: RepaintBoundary(
+            key: ValueKey<String>('visual-page-$index'),
+            child: pages[index],
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await expectLater(
+        find.byKey(ValueKey<String>('visual-page-$index')),
+        matchesGoldenFile(
+          '../visual_review/goldens/${VisualReviewCatalog.pageNames[index]}.png',
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
 }
