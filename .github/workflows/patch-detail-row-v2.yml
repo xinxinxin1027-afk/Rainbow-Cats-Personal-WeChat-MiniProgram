@@ -1,0 +1,27 @@
+name: Patch Responsive Detail Rows V2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-detail-row-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - run: python3 app/tool/patch_detail_row.py
+      - run: git diff --check -- app/lib/src/pages.dart
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/lib/src/pages.dart
+          git commit -m "fix(ui): make detail rows responsive at 320px"
+          git push origin HEAD:main
