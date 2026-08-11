@@ -1,0 +1,27 @@
+run_id=31484177401
+head_sha=1959d57b34f7b17bec4c8c48991e3cad1f231ddd
+status=completed
+conclusion=failure
+url=https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/actions/runs/31484177401
+failed_steps:
+- verify: 静态分析
+failed_log_tail:
+verify	静态分析	﻿2026-08-11T10:54:26.6115916Z ##[group]Run flutter analyze --fatal-infos
+verify	静态分析	2026-08-11T10:54:26.6116275Z ^[[36;1mflutter analyze --fatal-infos^[[0m
+verify	静态分析	2026-08-11T10:54:26.6164985Z shell: /usr/bin/bash -e {0}
+verify	静态分析	2026-08-11T10:54:26.6165246Z env:
+verify	静态分析	2026-08-11T10:54:26.6165455Z   FLUTTER_VERSION: 3.44.9
+verify	静态分析	2026-08-11T10:54:26.6165816Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+verify	静态分析	2026-08-11T10:54:26.6166313Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.19-10/x64
+verify	静态分析	2026-08-11T10:54:26.6166710Z   MAVEN_ARGS: -ntp
+verify	静态分析	2026-08-11T10:54:26.6167021Z   FLUTTER_ROOT: /opt/hostedtoolcache/flutter/stable-3.44.9-x64/flutter
+verify	静态分析	2026-08-11T10:54:26.6167388Z   PUB_CACHE: /home/runner/.pub-cache
+verify	静态分析	2026-08-11T10:54:26.6167645Z ##[endgroup]
+verify	静态分析	2026-08-11T10:54:34.9260179Z Analyzing app...                                                
+verify	静态分析	2026-08-11T10:54:34.9265712Z 
+verify	静态分析	2026-08-11T10:54:34.9300533Z   error • Undefined name 'pageNames'. Try correcting the name to one that is defined, or defining the name • test/layout_collision_test.dart:17:33 • undefined_identifier
+verify	静态分析	2026-08-11T10:54:34.9302657Z   error • Undefined name 'pageNames'. Try correcting the name to one that is defined, or defining the name • test/layout_collision_test.dart:19:12 • undefined_identifier
+verify	静态分析	2026-08-11T10:54:34.9304577Z   error • Undefined name 'pageNames'. Try correcting the name to one that is defined, or defining the name • test/layout_collision_test.dart:40:20 • undefined_identifier
+verify	静态分析	2026-08-11T10:54:34.9312908Z 
+verify	静态分析	2026-08-11T10:54:34.9413933Z 3 issues found. (ran in 7.7s)
+verify	静态分析	2026-08-11T10:54:34.9511766Z ##[error]Process completed with exit code 1.
