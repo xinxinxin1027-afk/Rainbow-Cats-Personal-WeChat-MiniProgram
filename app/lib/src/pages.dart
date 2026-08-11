@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../generated/original_assets.dart';
 import '../generated/original_style.dart';
@@ -24,7 +27,12 @@ class RainbowShell extends StatefulWidget {
 }
 
 class _RainbowShellState extends State<RainbowShell> {
+  static const MethodChannel _lifecycleChannel =
+      MethodChannel('rainbow_cats/app_lifecycle');
+
   late int _index = widget.initialIndex;
+  late final List<int> _tabHistory = <int>[widget.initialIndex];
+  bool _handlingBack = false;
 
   @override
   Widget build(BuildContext context) {
@@ -34,18 +42,53 @@ class _RainbowShellState extends State<RainbowShell> {
       MarketPage(store: widget.store),
       AccountPage(store: widget.store),
     ];
-    return Scaffold(
-      body: IndexedStack(index: _index, children: pages),
-      bottomNavigationBar: RainbowBottomBar(
-        index: _index,
-        onChanged: widget.lockedIndex ? (_) {} : _setIndex,
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop || _handlingBack) return;
+        unawaited(_handleBack());
+      },
+      child: Scaffold(
+        body: SafeArea(
+          bottom: false,
+          child: IndexedStack(index: _index, children: pages),
+        ),
+        bottomNavigationBar: RainbowBottomBar(
+          index: _index,
+          onChanged: widget.lockedIndex ? (_) {} : _setIndex,
+        ),
       ),
     );
   }
 
   void _setIndex(int index) {
-    if (!mounted || widget.lockedIndex) return;
-    setState(() => _index = index);
+    if (!mounted || widget.lockedIndex || index == _index) return;
+    setState(() {
+      _index = index;
+      _tabHistory.remove(index);
+      _tabHistory.add(index);
+    });
+  }
+
+  Future<void> _handleBack() async {
+    _handlingBack = true;
+    try {
+      if (_tabHistory.length > 1) {
+        if (!mounted) return;
+        setState(() {
+          _tabHistory.removeLast();
+          _index = _tabHistory.last;
+        });
+        return;
+      }
+      try {
+        await _lifecycleChannel.invokeMethod<bool>('moveToBackground');
+      } on MissingPluginException {
+        await SystemNavigator.pop();
+      }
+    } finally {
+      _handlingBack = false;
+    }
   }
 }
 
@@ -84,7 +127,6 @@ class _HomePageState extends State<HomePage> {
 
     return Column(
       children: <Widget>[
-        RainbowTopBar(title: OriginalAssets.pageTitle('MainPage', OriginalAssets.tabLabelAt(0)), store: store),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 20),
@@ -344,7 +386,6 @@ class _MissionListPageState extends State<MissionListPage> {
 
     return Column(
       children: <Widget>[
-        RainbowTopBar(title: OriginalAssets.pageTitle('Mission', OriginalAssets.tabLabelAt(1)), store: widget.store),
         Expanded(
           child: Stack(
             children: <Widget>[
@@ -923,7 +964,6 @@ class _MarketPageState extends State<MarketPage> {
 
     return Column(
       children: <Widget>[
-        RainbowTopBar(title: OriginalAssets.pageTitle('Market', OriginalAssets.tabLabelAt(2)), store: widget.store),
         Expanded(
           child: Stack(
             children: <Widget>[
@@ -1502,7 +1542,6 @@ class _AccountPageState extends State<AccountPage> {
         .toList();
     return Column(
       children: <Widget>[
-        RainbowTopBar(title: OriginalAssets.pageTitle('Account', OriginalAssets.tabLabelAt(3)), store: widget.store),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),

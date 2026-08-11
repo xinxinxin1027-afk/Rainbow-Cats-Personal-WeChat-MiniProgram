@@ -83,7 +83,6 @@ class _SettingsPageState extends State<SettingsPage> {
               title: '设置与同步',
               store: widget.store,
               onBack: () => Navigator.pop(context),
-              showCapsule: false,
             ),
             Expanded(
               child: ListView(
@@ -582,7 +581,6 @@ class MemberManagementPage extends StatelessWidget {
               title: '成员管理',
               store: store,
               onBack: () => Navigator.pop(context),
-              showCapsule: false,
             ),
             Expanded(
               child: AnimatedBuilder(
@@ -876,7 +874,6 @@ class PointLedgerPage extends StatelessWidget {
               title: '积分明细',
               store: store,
               onBack: () => Navigator.pop(context),
-              showCapsule: false,
             ),
             Expanded(
               child: AnimatedBuilder(

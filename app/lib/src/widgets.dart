@@ -9,213 +9,53 @@ class RainbowTopBar extends StatelessWidget {
   const RainbowTopBar({
     required this.title,
     required this.store,
-    this.onBack,
-    this.showCapsule = true,
+    required this.onBack,
     super.key,
   });
 
   final String title;
   final RainbowStore store;
-  final VoidCallback? onBack;
-  final bool showCapsule;
-
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-        color: OriginalStyle.primary,
-        child: SafeArea(
-          bottom: false,
-          child: SizedBox(
-            height: 52,
-            child: Stack(
-              alignment: Alignment.center,
-              children: <Widget>[
-                Positioned(
-                  left: 4,
-                  child: SizedBox(
-                    width: 92,
-                    child: onBack == null
-                        ? const SizedBox.shrink()
-                        : Align(
-                            alignment: Alignment.centerLeft,
-                            child: IconButton(
-                              tooltip: '返回',
-                              onPressed: onBack,
-                              icon: const Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 100),
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: .3,
-                    ),
-                  ),
-                ),
-                if (showCapsule)
-                  Positioned(
-                    right: 10,
-                    child: WeChatCapsule(store: store),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class WeChatCapsule extends StatelessWidget {
-  const WeChatCapsule({required this.store, super.key});
-
-  final RainbowStore store;
-
-  Future<void> _open(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (BuildContext sheetContext) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * .78,
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Text(
-                  '当前身份：${store.currentUser.name}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: store.users
-                      .map(
-                        (UserProfile user) => ChoiceChip(
-                          selected: user.id == store.currentUserId,
-                          label: Text(user.name),
-                          avatar: user.id == store.currentUserId
-                              ? const Icon(Icons.check_rounded, size: 16)
-                              : null,
-                          onSelected: user.id == store.currentUserId
-                              ? null
-                              : (_) async {
-                                  Navigator.pop(sheetContext);
-                                  await store.switchUserTo(user.id);
-                                },
-                        ),
-                      )
-                      .toList(),
-                ),
-                const SizedBox(height: 14),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pushNamed(context, '/members');
-                  },
-                  icon: const Icon(Icons.group_outlined),
-                  label: const Text('成员管理'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pushNamed(context, '/ledger');
-                  },
-                  icon: const Icon(Icons.receipt_long_outlined),
-                  label: const Text('积分明细'),
-                ),
-                const SizedBox(height: 8),
-                FilledPinkButton(
-                  label: '设置与 WebDAV',
-                  icon: Icons.settings_outlined,
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.pushNamed(context, '/settings');
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(sheetContext);
-                    final bool? confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (BuildContext dialogContext) => AlertDialog(
-                        title: const Text('重置样例数据'),
-                        content: const Text(
-                          '任务、商品、积分和仓库将恢复到初始状态；连接设置会保留。',
-                        ),
-                        actions: <Widget>[
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.pop(dialogContext, false),
-                            child: const Text('取消'),
-                          ),
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.pop(dialogContext, true),
-                            child: const Text('重置'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed == true) await store.reset();
-                  },
-                  icon: const Icon(Icons.restart_alt_rounded),
-                  label: const Text('重置样例数据'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: '更多，当前身份 ${store.currentUser.name}',
-        child: Material(
-          color: Colors.white.withAlpha(245),
-          borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            onTap: () => _open(context),
-            borderRadius: BorderRadius.circular(18),
-            child: Container(
-              width: 84,
-              height: 32,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.black12),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        container: true,
+        label: '$title，当前身份 ${store.currentUser.name}',
+        child: ColoredBox(
+          color: OriginalStyle.primary,
+          child: SafeArea(
+            bottom: false,
+            child: SizedBox(
+              height: 48,
+              child: Stack(
+                alignment: Alignment.center,
                 children: <Widget>[
-                  Icon(Icons.more_horiz_rounded, size: 20),
-                  SizedBox(
-                    height: 18,
-                    child: VerticalDivider(width: 1, thickness: .6),
+                  Positioned(
+                    left: 4,
+                    child: IconButton(
+                      tooltip: '返回',
+                      onPressed: onBack,
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
                   ),
-                  Icon(Icons.radio_button_unchecked_rounded, size: 17),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 56),
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: .2,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
