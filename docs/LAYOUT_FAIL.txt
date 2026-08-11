@@ -1,0 +1,3 @@
+                '${pageNames[index]} @ ${size.width}x${size.height} 出现布局/渲染异常',
+00:00 +0 -1: loading /home/runner/work/Rainbow-Cats-Personal-WeChat-MiniProgram/Rainbow-Cats-Personal-WeChat-MiniProgram/app/test/layout_collision_test.dart [E]
+                  '${pageNames[index]} @ ${size.width}x${size.height} 出现布局/渲染异常',
