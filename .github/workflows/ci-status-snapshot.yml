@@ -1,0 +1,33 @@
+name: CI Status Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ci-status-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Snapshot latest Android CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          json=$(gh run list --workflow 'Android CI' --branch main --limit 1 --json databaseId,status,conclusion,headSha,url)
+          echo "$json" | jq -r '.[0] | "run_id=\(.databaseId)\nhead_sha=\(.headSha)\nstatus=\(.status)\nconclusion=\(.conclusion)\nurl=\(.url)"' > docs/ANDROID_CI_SNAPSHOT.txt
+          run_id=$(echo "$json" | jq -r '.[0].databaseId')
+          gh run view "$run_id" --json jobs --jq '.jobs[] | .steps[] | "step=\(.name)|status=\(.status)|conclusion=\(.conclusion)"' >> docs/ANDROID_CI_SNAPSHOT.txt || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ANDROID_CI_SNAPSHOT.txt
+          git commit -m "test: snapshot Android CI state"
+          git push origin HEAD:main
