@@ -1,0 +1,282 @@
+name: Android Delivery V2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-delivery-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.44.9'
+  RELEASE_TAG: 'v1.0.0'
+  RAINBOW_KEYSTORE_BASE64: ${{ secrets.RAINBOW_KEYSTORE_BASE64 }}
+  RAINBOW_KEYSTORE_PASSWORD: ${{ secrets.RAINBOW_KEYSTORE_PASSWORD }}
+  RAINBOW_KEY_ALIAS: ${{ secrets.RAINBOW_KEY_ALIAS }}
+  RAINBOW_KEY_PASSWORD: ${{ secrets.RAINBOW_KEY_PASSWORD }}
+
+concurrency:
+  group: rainbow-cats-v1-delivery
+  cancel-in-progress: true
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Source / tooling / Android preparation
+        id: prepare
+        run: |
+          python3 tool/static_source_check.py
+          python3 tool/test_tooling.py
+          bash tool/bootstrap_android.sh
+          bash tool/prepare_signing.sh
+      - name: Strict Dart formatting and analysis
+        id: analyze
+        run: |
+          dart format --output=none --set-exit-if-changed lib test integration_test
+          flutter analyze --fatal-infos
+      - name: Core / WebDAV / Widget / responsive layout tests
+        id: tests
+        run: |
+          flutter test test/store_test.dart --reporter compact
+          flutter test test/webdav_test.dart --reporter compact
+          flutter test test/app_widget_test.dart --reporter compact
+          flutter test test/layout_collision_test.dart --reporter compact
+      - name: Build Debug, universal Release and split Release APKs
+        id: build
+        run: |
+          flutter build apk --debug
+          flutter build apk --release
+          flutter build apk --release --split-per-abi
+      - name: Verify APK metadata, signature and checksum
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | tee build/apk-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee build/apk-signature.txt
+          sha256sum "$APK" | tee build/app-release.apk.sha256
+
+      - name: Generate all 12 Flutter visual baselines
+        id: golden
+        run: |
+          flutter test --update-goldens test/visual_review_test.dart
+          python3 -m pip install --disable-pip-version-check pillow
+          python3 tool/build_static_visual_review.py
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+        working-directory: .
+      - name: Install the exact Release APK on Pixel 6 API 35 and exercise four main tabs
+        id: emulator_release
+        uses: reactivecircus/android-emulator-runner@v2.37.0
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            set -euo pipefail
+            cd app
+            APK=build/app/outputs/flutter-apk/app-release.apk
+            AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+            PACKAGE=$($AAPT dump badging "$APK" | sed -n "s/package: name='\([^']*\)'.*/\1/p" | head -1)
+            test -n "$PACKAGE"
+            rm -rf visual_review/release
+            mkdir -p visual_review/release
+            adb logcat -c
+            adb install -r "$APK"
+            adb shell am force-stop "$PACKAGE"
+            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 >/tmp/monkey.log
+            sleep 4
+            adb shell pidof "$PACKAGE" | tee visual_review/release/pid.txt
+            test -s visual_review/release/pid.txt
+            size=$(adb shell wm size | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)
+            read -r width height <<< "$size"
+            test -n "$width"
+            y=$((height - 110))
+            names=(main mission market account)
+            for index in 0 1 2 3; do
+              x=$((width * (index * 2 + 1) / 8))
+              adb shell input tap "$x" "$y"
+              sleep 1
+              adb exec-out screencap -p > "visual_review/release/${names[$index]}.png"
+              adb shell pidof "$PACKAGE" >/dev/null
+            done
+            adb shell am force-stop "$PACKAGE"
+            adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 >/dev/null
+            sleep 2
+            adb shell pidof "$PACKAGE" >/dev/null
+            adb logcat -d > visual_review/release/logcat.txt
+            if grep -A 25 -B 3 -E 'FATAL EXCEPTION|Process: .*rainbow|AndroidRuntime' visual_review/release/logcat.txt | grep -q "$PACKAGE"; then
+              echo 'Fatal crash found for release package.' >&2
+              exit 1
+            fi
+            printf 'package=%s\nsize=%sx%s\nrelease_install=PASS\nrelease_launch=PASS\nfour_tabs=PASS\n' "$PACKAGE" "$width" "$height" > visual_review/release/release-proof.txt
+      - name: Run Flutter integration flow on the same Pixel 6 emulator
+        id: integration
+        uses: reactivecircus/android-emulator-runner@v2.37.0
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: cd app && flutter test integration_test/app_flow_test.dart -d emulator-5554
+      - name: Build original-versus-release visual comparison
+        id: comparison
+        run: |
+          mkdir -p visual_review/emulator
+          cp visual_review/release/*.png visual_review/emulator/ || true
+          python3 tool/build_visual_comparison.py
+
+      - name: Package verified release
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ../release
+          mkdir -p ../release
+          cp build/app/outputs/flutter-apk/app-release.apk ../release/rainbow-cats-android-universal.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ../release/rainbow-cats-android-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ../release/rainbow-cats-android-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk ../release/rainbow-cats-android-x86_64.apk
+          cp build/apk-badging.txt build/apk-signature.txt ../release/
+          cp ../FINAL_REPORT.md ../RELEASE_NOTES.md ../release/
+          cp visual_review/release/release-proof.txt ../release/
+          {
+            echo "source_commit=$GITHUB_SHA"
+            echo "actions_run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "flutter=$FLUTTER_VERSION"
+            echo "analyze=PASS"
+            echo "tests=PASS"
+            echo "48_layout_checks=PASS"
+            echo "debug_apk=PASS"
+            echo "release_apk=PASS"
+            echo "apk_signature=PASS"
+            echo "pixel6_api35_release_install_launch=PASS"
+            echo "four_main_tabs=PASS"
+            echo "integration=PASS"
+            echo "visual_baselines=PASS"
+          } > ../release/RELEASE_VALIDATION.txt
+          (cd visual_review && zip -qr ../release/visual-review.zip goldens release comparison 2>/dev/null || zip -qr ../release/visual-review.zip .)
+          (cd ../release && sha256sum *.apk > SHA256SUMS.txt)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rainbow-cats-v1-verified-${{ github.sha }}
+          path: release
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish v1.0.0 only after every gate passed
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --title "Rainbow Cats $RELEASE_TAG" --notes-file RELEASE_NOTES.md
+          fi
+          gh release view "$RELEASE_TAG" --json url,tagName,targetCommitish,assets > release/GITHUB_RELEASE.json
+
+      - name: Record verified delivery in FINAL_REPORT
+        id: report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          url=$(gh release view "$RELEASE_TAG" --json url --jq .url)
+          sha=$(sha256sum release/rainbow-cats-android-universal.apk | cut -d' ' -f1)
+          cat >> FINAL_REPORT.md <<EOF
+
+          ## v1.0.0 最终实测交付
+
+          - Release：$url
+          - APK 源码 Commit：$GITHUB_SHA
+          - GitHub Actions：$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          - Flutter 3.44.9 静态分析：✅
+          - Store / WebDAV / Widget / 48 个页面尺寸组合：✅
+          - Debug / Release / 分架构 APK 构建：✅
+          - APK metadata 与签名校验：✅
+          - Pixel 6 / Android API 35 安装并启动最终 Release APK：✅
+          - 最终 APK 四个主导航实际点击：✅
+          - Integration Test：✅
+          - 视觉基线与原版/Emulator 对照产物：✅
+          - Universal APK SHA-256：$sha
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add FINAL_REPORT.md
+          git commit -m 'docs: record fully verified Android v1.0.0 release' || true
+          git push origin HEAD:main
+
+      - name: Persist concise failure stage
+        if: failure()
+        env:
+          PREPARE: ${{ steps.prepare.outcome }}
+          ANALYZE: ${{ steps.analyze.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          VERIFY: ${{ steps.verify.outcome }}
+          GOLDEN: ${{ steps.golden.outcome }}
+          EMULATOR_RELEASE: ${{ steps.emulator_release.outcome }}
+          INTEGRATION: ${{ steps.integration.outcome }}
+          COMPARISON: ${{ steps.comparison.outcome }}
+          PACKAGE: ${{ steps.package.outcome }}
+          PUBLISH: ${{ steps.publish.outcome }}
+        working-directory: .
+        run: |
+          cat > docs/DELIVERY_V2_FAILURE.txt <<EOF
+          run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          head_sha=$GITHUB_SHA
+          prepare=$PREPARE
+          analyze=$ANALYZE
+          tests=$TESTS
+          build=$BUILD
+          verify=$VERIFY
+          golden=$GOLDEN
+          emulator_release=$EMULATOR_RELEASE
+          integration=$INTEGRATION
+          comparison=$COMPARISON
+          package=$PACKAGE
+          publish=$PUBLISH
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/DELIVERY_V2_FAILURE.txt
+          git commit -m 'test: record Android Delivery V2 failure' || true
+          git push origin HEAD:main || true
