@@ -51,18 +51,20 @@ class RainbowCatsApp extends StatelessWidget {
   final bool visualReview;
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-        animation: store,
-        builder: (BuildContext context, _) => MaterialApp(
-          title: OriginalStyle.appTitle,
-          debugShowCheckedModeBanner: false,
-          theme: RainbowTheme.light,
-          routes: <String, WidgetBuilder>{
-            '/settings': (_) => SettingsPage(store: store),
-            '/members': (_) => MemberManagementPage(store: store),
-            '/ledger': (_) => PointLedgerPage(store: store),
-          },
-          home: visualReview
+  Widget build(BuildContext context) => MaterialApp(
+        title: OriginalStyle.appTitle,
+        debugShowCheckedModeBanner: false,
+        theme: RainbowTheme.light,
+        routes: <String, WidgetBuilder>{
+          '/settings': (_) => SettingsPage(store: store),
+          '/members': (_) => MemberManagementPage(store: store),
+          '/ledger': (_) => PointLedgerPage(store: store),
+        },
+        // Keep MaterialApp/Navigator stable while dialogs and popup routes animate.
+        // Only rebuild the application content when the lightweight store changes.
+        home: AnimatedBuilder(
+          animation: store,
+          builder: (BuildContext context, _) => visualReview
               ? VisualReviewCatalog(store: store)
               : RainbowShell(store: store),
         ),
