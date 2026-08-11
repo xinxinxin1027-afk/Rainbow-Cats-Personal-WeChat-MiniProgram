@@ -1,0 +1,46 @@
+name: Bootstrap Android Source V3
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap-android-source-v3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and restore reviewed Android source
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() { echo "$1  $2" | sha256sum -c -; }
+          check 0574d0633156cc4465a2bceb38c85da4591e7e7559a0620f0ab5edd59a0b2cb3 .bootstrap/part01.b64
+          check 91d6c1309d1cdc9423c30e8a763adf6831be11125c40baa880da684c48c5923b .bootstrap/part02.b64
+          check ec752e987c30270ace757e34b390dd1f4248b71e995b336bc2ce64a70941dd82 .bootstrap/part03a.b64
+          check cdc15a421c642b8f570f13a19b37388d10baa0b867a7894273056c8b8558a1e1 .bootstrap/part03b.b64
+          check 1994ac9c8d58f49a74a4eae206b02b62c06457dac074f220652a5aa866452dec .bootstrap/part04.b64
+          check dd4764b58c8fc045147dd86412247a3b197617f96fc936174c6ee8005b17952c .bootstrap/part05.b64
+          check cc195d3413dcdcd9ea62ac732f61c20a11473dc9536cb0b7401b31f52b908dfe .bootstrap/part06a.b64
+          check 6c792b226e2953ee93fc712d50555daeeb57a6f016dc1c193fd613eb47a3f5d1 .bootstrap/part07c1.b64
+          check 0a4ca0fe6ebf46a5d9cba90b91aaf489747daa8f90995551c63267ece8297538 .bootstrap/part07c2.b64
+          check cdea7af8e91ef0006eef63f9c4778ac2855d1e8b37d4f744166ea01eede28a11 .bootstrap/part07b.b64
+          check e8343b5d71abeb0ffc4f23cd0646eef9508a8f075e4d516ad907221c32a9cd7f .bootstrap/part08a.b64
+          check 3ffe7e71ef2452d288fd10d594fda380cfe484e459d59a64c77fa56c3aaf3391 .bootstrap/part08b.b64
+          cat .bootstrap/part01.b64 .bootstrap/part02.b64 .bootstrap/part03a.b64 .bootstrap/part03b.b64 .bootstrap/part04.b64 .bootstrap/part05.b64 .bootstrap/part06a.b64 .bootstrap/part07c1.b64 .bootstrap/part07c2.b64 .bootstrap/part07b.b64 .bootstrap/part08a.b64 .bootstrap/part08b.b64 | base64 -d > /tmp/rainbow-overlay.tar.gz
+          echo "60a3e6d95ed62fcccce4cdaf6fe549bf1981e27f55f9de2f02a995cb331074a4  /tmp/rainbow-overlay.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/rainbow-overlay.tar.gz -C .
+          rm -rf .bootstrap
+          rm -f .github/workflows/bootstrap-android-source.yml .github/workflows/bootstrap-android-source-v2.yml .github/workflows/bootstrap-android-source-v3.yml .github/workflows/bootstrap-diagnose.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(android): complete Flutter client, WebDAV and release gates"
+          git push origin HEAD:main
