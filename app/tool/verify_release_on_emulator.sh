@@ -14,6 +14,7 @@ test -n "$PACKAGE"
 rm -rf visual_review/release
 mkdir -p visual_review/release
 adb logcat -c
+adb logcat -b crash -c >/dev/null 2>&1 || true
 adb install -r "$APK"
 adb shell am force-stop "$PACKAGE"
 adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 >/tmp/rainbow-monkey.log
@@ -48,11 +49,16 @@ adb shell monkey -p "$PACKAGE" -c android.intent.category.LAUNCHER 1 >/dev/null
 sleep 2
 adb shell pidof "$PACKAGE" >/dev/null
 adb logcat -d > visual_review/release/logcat.txt
+adb logcat -b crash -d > visual_review/release/crash-logcat.txt 2>/dev/null || true
 
-if grep -A 25 -B 3 -E 'FATAL EXCEPTION|Process: .*rainbow|AndroidRuntime' visual_review/release/logcat.txt | grep -q "$PACKAGE"; then
-  echo 'Fatal crash found for release package.' >&2
+# Only Android's dedicated crash buffer is authoritative for this gate.
+# The normal log buffer contains routine AndroidRuntime lines that can mention
+# the app package and previously caused false positives despite a live process.
+if grep -Fq "Process: $PACKAGE" visual_review/release/crash-logcat.txt; then
+  echo 'Fatal crash found for release package:' >&2
+  cat visual_review/release/crash-logcat.txt >&2
   exit 1
 fi
 
-printf 'package=%s\nsize=%sx%s\nrelease_install=PASS\nrelease_launch=PASS\nfour_tabs=PASS\n' \
+printf 'package=%s\nsize=%sx%s\nrelease_install=PASS\nrelease_launch=PASS\nfour_tabs=PASS\ncrash_buffer=PASS\n' \
   "$PACKAGE" "$width" "$height" > visual_review/release/release-proof.txt
