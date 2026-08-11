@@ -1928,14 +1928,23 @@ class _DetailRow extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(label, style: const TextStyle(color: OriginalStyle.muted)),
-            const Spacer(),
-            trailing ??
-                Text(
-                  value ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: trailing ??
+                    Text(
+                      value ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+              ),
+            ),
           ],
         ),
       );
