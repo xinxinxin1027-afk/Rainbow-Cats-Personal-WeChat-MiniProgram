@@ -52,13 +52,35 @@ jobs:
         run: dart format --output=none lib test integration_test
       - name: 静态分析
         run: flutter analyze --fatal-infos
-      - name: 核心逻辑、WebDAV、页面和布局测试
-        run: >-
-          flutter test
-          test/store_test.dart
-          test/webdav_test.dart
-          test/app_widget_test.dart
-          test/layout_collision_test.dart
+      - name: Store 与核心业务测试
+        id: store_tests
+        continue-on-error: true
+        run: flutter test test/store_test.dart --reporter expanded
+      - name: WebDAV 与 Server 接口测试
+        id: webdav_tests
+        continue-on-error: true
+        run: flutter test test/webdav_test.dart --reporter expanded
+      - name: 页面与交互 Widget 测试
+        id: widget_tests
+        continue-on-error: true
+        run: flutter test test/app_widget_test.dart --reporter expanded
+      - name: 多尺寸布局碰撞测试
+        id: layout_tests
+        continue-on-error: true
+        run: flutter test test/layout_collision_test.dart --reporter expanded
+      - name: 自动测试总门禁
+        if: always()
+        env:
+          STORE_TESTS: ${{ steps.store_tests.outcome }}
+          WEBDAV_TESTS: ${{ steps.webdav_tests.outcome }}
+          WIDGET_TESTS: ${{ steps.widget_tests.outcome }}
+          LAYOUT_TESTS: ${{ steps.layout_tests.outcome }}
+        run: |
+          printf 'store=%s\nwebdav=%s\nwidget=%s\nlayout=%s\n' "$STORE_TESTS" "$WEBDAV_TESTS" "$WIDGET_TESTS" "$LAYOUT_TESTS"
+          test "$STORE_TESTS" = success
+          test "$WEBDAV_TESTS" = success
+          test "$WIDGET_TESTS" = success
+          test "$LAYOUT_TESTS" = success
       - name: 构建 Debug APK
         run: flutter build apk --debug
       - name: 构建 Release APK
