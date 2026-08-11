@@ -104,11 +104,13 @@ class ToolingTest(unittest.TestCase):
             repo = Path(folder)
             app = repo / 'app'
             self._copy_tool(repo, 'patch_android.py')
+            (app / 'assets').mkdir(parents=True)
+            (app / 'assets/app_icon.png').write_bytes(b'uploaded-app-icon')
             manifest = app / 'android/app/src/main/AndroidManifest.xml'
             manifest.parent.mkdir(parents=True)
             manifest.write_text(
                 '''<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                '    <application android:label="rainbow_cats" />\n'
+                '    <application android:label="rainbow_cats" android:icon="@mipmap/ic_launcher" />\n'
                 '</manifest>\n'''.replace("'\n                '", ''),
                 encoding='utf-8',
             )
@@ -128,12 +130,23 @@ class ToolingTest(unittest.TestCase):
             self.assertIn('android.permission.INTERNET', patched)
             self.assertIn('android:label="Rainbow Cats"', patched)
             self.assertIn('android:usesCleartextTraffic="true"', patched)
+            self.assertIn('android:icon="@drawable/app_icon"', patched)
+            self.assertEqual(
+                (app / 'android/app/src/main/res/drawable-nodpi/app_icon.png').read_bytes(),
+                b'uploaded-app-icon',
+            )
             self.assertTrue(
                 (app / 'android/app/src/main/res/drawable/launch_background.xml').exists()
             )
             self.assertTrue(
                 (app / 'android/app/src/main/res/values-v31/styles.xml').exists()
             )
+            activity = (
+                app
+                / 'android/app/src/main/kotlin/com/xinxinxin1027/rainbow_cats/MainActivity.kt'
+            ).read_text(encoding='utf-8')
+            self.assertIn('rainbow_cats/app_lifecycle', activity)
+            self.assertIn('moveTaskToBack(true)', activity)
             self.assertIn(
                 'RAINBOW_OPTIONAL_SIGNING', gradle.read_text(encoding='utf-8')
             )
