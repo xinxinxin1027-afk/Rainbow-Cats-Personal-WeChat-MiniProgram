@@ -793,77 +793,74 @@ class MemberManagementPage extends StatelessWidget {
     if (context.mounted) _showResult(context, result);
   }
 
-  Future<_MemberFormValue?> _memberDialog(Member? member) async {
-  final TextEditingController nameController = TextEditingController(
-    text: member?.name ?? '',
-  );
-  final TextEditingController creditController = TextEditingController(
-    text: '${member?.credit ?? 0}',
-  );
-  final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  final DialogRoute<_MemberFormValue> route = DialogRoute<_MemberFormValue>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text(member == null ? '添加成员' : '编辑成员'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              TextFormField(
-                key: const ValueKey<String>('member-name'),
-                controller: nameController,
-                autofocus: true,
-                maxLength: 16,
-                decoration: const InputDecoration(labelText: '昵称'),
-                validator: (String? value) =>
-                    (value ?? '').trim().isEmpty ? '请输入昵称' : null,
-              ),
-              TextFormField(
-                controller: creditController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: '初始/当前积分'),
-                validator: (String? value) => int.tryParse(value ?? '') == null
-                    ? '请输入整数'
-                    : null,
-              ),
-            ],
-          ),
+  Future<_MemberFormValue?> _memberDialog(
+    BuildContext context, {
+    required String title,
+    required String name,
+    required int credit,
+  }) async {
+    final TextEditingController nameController =
+        TextEditingController(text: name);
+    final TextEditingController creditController =
+        TextEditingController(text: credit.toString());
+    final DialogRoute<_MemberFormValue> route = DialogRoute<_MemberFormValue>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            TextField(
+              key: const ValueKey<String>('member-name'),
+              controller: nameController,
+              maxLength: 12,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: '名称'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              key: const ValueKey<String>('member-credit'),
+              controller: creditController,
+              keyboardType: TextInputType.number,
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              decoration: const InputDecoration(labelText: '积分'),
+            ),
+          ],
         ),
         actions: <Widget>[
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('取消'),
           ),
-          FilledButton(
+          TextButton(
             onPressed: () {
-              if (!(formKey.currentState?.validate() ?? false)) {
-                return;
-              }
               Navigator.pop(
-                context,
+                dialogContext,
                 _MemberFormValue(
-                  nameController.text.trim(),
-                  int.parse(creditController.text),
+                  nameController.text,
+                  int.tryParse(creditController.text) ?? 0,
                 ),
               );
             },
             child: const Text('保存'),
           ),
         ],
-      );
-    },
-  );
-  final _MemberFormValue? value = await Navigator.of(context).push(route);
-  // DialogRoute.completed only finishes after its exit transition and overlay
-  // entries are gone. Global store mutations therefore happen in a stable
-  // Navigator build scope instead of racing the dialog dismissal.
-  await route.completed;
-  nameController.dispose();
-  creditController.dispose();
-  return value;
-}
+      ),
+    );
+    final _MemberFormValue? result = await Navigator.of(context).push(route);
+    await route.completed;
+    nameController.dispose();
+    creditController.dispose();
+    return result;
+  }
+
+  void _showResult(BuildContext context, ActionResult result) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(result.message)));
+  }
 }
 
 class PointLedgerPage extends StatelessWidget {
