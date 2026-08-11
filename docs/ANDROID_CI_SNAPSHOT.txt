@@ -1,0 +1,29 @@
+run_id=31484177401
+head_sha=1959d57b34f7b17bec4c8c48991e3cad1f231ddd
+status=completed
+conclusion=failure
+url=https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/actions/runs/31484177401
+step=Set up job|status=completed|conclusion=success
+step=Run actions/checkout@v6|status=completed|conclusion=success
+step=Run actions/setup-java@v5|status=completed|conclusion=success
+step=Run subosito/flutter-action@v2.23.0|status=completed|conclusion=success
+step=纯源码结构检查|status=completed|conclusion=success
+step=构建工具自检|status=completed|conclusion=success
+step=准备 Android 工程和原始资源|status=completed|conclusion=success
+step=检查格式|status=completed|conclusion=success
+step=静态分析|status=completed|conclusion=failure
+step=Store 与核心业务测试|status=completed|conclusion=skipped
+step=WebDAV 与 Server 接口测试|status=completed|conclusion=skipped
+step=Widget - 四个底部入口|status=completed|conclusion=skipped
+step=Widget - 设置与 WebDAV 保存|status=completed|conclusion=skipped
+step=Widget - 任务新增|status=completed|conclusion=skipped
+step=Widget - 成员新增|status=completed|conclusion=skipped
+step=多尺寸布局碰撞测试|status=completed|conclusion=skipped
+step=构建 Debug APK|status=completed|conclusion=skipped
+step=构建 Release APK|status=completed|conclusion=skipped
+step=验证 APK 结构和签名|status=completed|conclusion=skipped
+step=Run actions/upload-artifact@v7|status=completed|conclusion=skipped
+step=Post Run subosito/flutter-action@v2.23.0|status=completed|conclusion=success
+step=Post Run actions/setup-java@v5|status=completed|conclusion=success
+step=Post Run actions/checkout@v6|status=completed|conclusion=success
+step=Complete job|status=completed|conclusion=success
