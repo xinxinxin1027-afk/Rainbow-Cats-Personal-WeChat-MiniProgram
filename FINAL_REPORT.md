@@ -169,3 +169,18 @@ Release 工作流会重新执行上述门禁，并额外执行：
 - 同一条记录在多设备同时修改时采用较新时间戳；设备时间严重错误会影响冲突选择。
 - Server 业务 API 尚未定义，当前只提供配置与健康检查；核心 App 不依赖服务器。
 - 实际编译、安装、截图和 GitHub Release 状态必须以真实 Actions 运行和 Release 页面为准。
+
+## v1.0.0 最终实测交付
+
+- Release：https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/releases/tag/v1.0.0
+- APK 源码 Commit：726e9c91fa7cb8620ff195d09bb14700e219443b
+- GitHub Actions：https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/actions/runs/31496582807
+- Flutter 3.44.9 静态分析：✅
+- Store / WebDAV / Widget / 48 个页面尺寸组合：✅
+- Debug / Release / 分架构 APK 构建：✅
+- APK metadata 与签名校验：✅
+- Pixel 6 / Android API 35 安装并启动最终 Release APK：✅
+- 最终 APK 四个主导航实际点击：✅
+- Integration Test：✅
+- 视觉基线与原版/Emulator 对照产物：✅
+- Universal APK SHA-256：840fb28a91bf57ffaddf1f93c75c383ba12ea8441d3604c04441476c9ba8ba06
