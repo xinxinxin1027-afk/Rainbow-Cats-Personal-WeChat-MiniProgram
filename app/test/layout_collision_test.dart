@@ -6,6 +6,20 @@ import 'package:rainbow_cats/src/pages.dart';
 import 'package:rainbow_cats/src/store.dart';
 
 void main() {
+  const List<String> pageNames = <String>[
+    '首页',
+    '任务',
+    '任务新增',
+    '任务详情',
+    '商城',
+    '商品新增',
+    '商品详情',
+    '仓库',
+    '物品详情',
+    '设置与同步',
+    '成员管理',
+    '积分明细',
+  ];
   final List<Size> sizes = <Size>[
     const Size(320, 568),
     const Size(360, 640),
@@ -25,6 +39,7 @@ void main() {
             clock: () => DateTime(2026, 8, 10, 12),
           )..seedForTest();
           final List<Widget> pages = buildVisualPages(store);
+          expect(pages.length, pageNames.length);
           await tester.pumpWidget(
             MaterialApp(
               debugShowCheckedModeBanner: false,
