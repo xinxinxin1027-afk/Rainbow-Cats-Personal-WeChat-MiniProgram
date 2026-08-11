@@ -149,7 +149,7 @@ jobs:
             echo "integration=PASS"
             echo "visual_baselines=PASS"
           } > ../release/RELEASE_VALIDATION.txt
-          (cd visual_review && zip -qr ../release/visual-review.zip goldens release comparison 2>/dev/null || zip -qr ../release/visual-review.zip .)
+          (cd visual_review && zip -qr ../../release/visual-review.zip goldens release comparison 2>/dev/null || zip -qr ../../release/visual-review.zip .)
           (cd ../release && sha256sum *.apk > SHA256SUMS.txt)
 
       - uses: actions/upload-artifact@v7
