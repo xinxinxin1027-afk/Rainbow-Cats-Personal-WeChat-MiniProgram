@@ -7,7 +7,7 @@ import 'package:rainbow_cats/src/store.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('主导航、任务新增和设置入口可完整操作',
+  testWidgets('主导航、返回历史、任务新增和设置入口可完整操作',
       (WidgetTester tester) async {
     final RainbowStore store = RainbowStore(
       MemoryRainbowStorage(),
@@ -22,6 +22,15 @@ void main() {
       expect(tester.takeException(), isNull);
     }
 
+    await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-0')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('待完成任务'));
+    await tester.pumpAndSettle();
+    expect(find.text('未完成'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('你好，卡比'), findsOneWidget);
+
     await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-1')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey<String>('add-mission')));
@@ -34,9 +43,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(store.missions.first.title, '集成测试任务');
 
-    await tester.tap(find.bySemanticsLabel('更多，当前身份 卡比'));
+    await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-3')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('设置与 WebDAV'));
+    await tester.ensureVisible(find.text('设置同步'));
+    await tester.tap(find.text('设置同步'));
     await tester.pumpAndSettle();
     expect(find.text('WebDAV URL'), findsOneWidget);
   });
