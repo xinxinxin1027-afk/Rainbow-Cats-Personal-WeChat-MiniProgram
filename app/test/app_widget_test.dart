@@ -20,15 +20,43 @@ void main() {
     }
   });
 
-  testWidgets('可以从胶囊进入设置并保存 WebDAV 配置',
+  testWidgets('主页面不再显示小程序顶部胶囊或重复标题',
       (WidgetTester tester) async {
     final RainbowStore store = buildStore();
     await tester.pumpWidget(RainbowCatsApp(store: store));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('更多，当前身份 卡比'));
+    expect(find.bySemanticsLabel('更多，当前身份 卡比'), findsNothing);
+    expect(find.text('首页'), findsOneWidget);
+    expect(find.text('你好，卡比'), findsOneWidget);
+  });
+
+  testWidgets('首页统计入口进入任务后系统返回会回到首页',
+      (WidgetTester tester) async {
+    final RainbowStore store = buildStore();
+    await tester.pumpWidget(RainbowCatsApp(store: store));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('设置与 WebDAV'));
+
+    await tester.tap(find.text('待完成任务'));
+    await tester.pumpAndSettle();
+    expect(find.text('未完成'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('你好，卡比'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('可以从仓库页进入设置并保存 WebDAV 配置',
+      (WidgetTester tester) async {
+    final RainbowStore store = buildStore();
+    await tester.pumpWidget(RainbowCatsApp(store: store));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-3')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('设置同步'));
+    await tester.tap(find.text('设置同步'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -67,8 +95,9 @@ void main() {
     await tester.pumpWidget(RainbowCatsApp(store: store));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('更多，当前身份 卡比'));
+    await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-3')));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('成员管理'));
     await tester.tap(find.text('成员管理'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('添加成员'));
