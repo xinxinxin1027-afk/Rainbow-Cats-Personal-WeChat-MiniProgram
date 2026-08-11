@@ -21,3 +21,7 @@ fi
 
 python3 tool/patch_android.py
 flutter pub get
+
+# 上面的资源/样式生成器会重写 Dart 文件。统一在 bootstrap 末尾格式化，
+# 保证随后严格的 `dart format --set-exit-if-changed` 是稳定、可重复的门禁。
+dart format lib test integration_test >/dev/null
