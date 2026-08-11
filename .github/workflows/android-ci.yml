@@ -56,8 +56,14 @@ jobs:
         run: flutter test test/store_test.dart --reporter expanded
       - name: WebDAV 与 Server 接口测试
         run: flutter test test/webdav_test.dart --reporter expanded
-      - name: 页面与交互 Widget 测试
-        run: flutter test test/app_widget_test.dart --reporter expanded
+      - name: Widget - 四个底部入口
+        run: flutter test test/app_widget_test.dart --plain-name '四个底部入口可切换且没有异常' --reporter expanded
+      - name: Widget - 设置与 WebDAV 保存
+        run: flutter test test/app_widget_test.dart --plain-name '可以从胶囊进入设置并保存 WebDAV 配置' --reporter expanded
+      - name: Widget - 任务新增
+        run: flutter test test/app_widget_test.dart --plain-name '任务新增后立即出现在任务列表' --reporter expanded
+      - name: Widget - 成员新增
+        run: flutter test test/app_widget_test.dart --plain-name '成员管理支持新增第三名成员' --reporter expanded
       - name: 多尺寸布局碰撞测试
         run: flutter test test/layout_collision_test.dart --reporter expanded
       - name: 构建 Debug APK
