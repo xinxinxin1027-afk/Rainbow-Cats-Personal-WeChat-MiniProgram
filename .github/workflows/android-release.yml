@@ -14,45 +14,142 @@ on:
 permissions:
   contents: write
 
+env:
+  FLUTTER_VERSION: '3.44.9'
+  RAINBOW_KEYSTORE_BASE64: ${{ secrets.RAINBOW_KEYSTORE_BASE64 }}
+  RAINBOW_KEYSTORE_PASSWORD: ${{ secrets.RAINBOW_KEYSTORE_PASSWORD }}
+  RAINBOW_KEY_ALIAS: ${{ secrets.RAINBOW_KEY_ALIAS }}
+  RAINBOW_KEY_PASSWORD: ${{ secrets.RAINBOW_KEY_PASSWORD }}
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     defaults:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.23.0
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-      - name: 准备 Android 工程和原始资源
-        run: bash tool/bootstrap_android.sh
-      - run: flutter analyze
-      - name: 逻辑与布局测试
-        run: flutter test test/store_test.dart test/layout_collision_test.dart
-      - run: flutter build apk --release
-      - run: flutter build apk --release --split-per-abi
+      - name: 纯源码结构检查
+        run: python3 tool/static_source_check.py
+      - name: 构建工具自检
+        run: python3 tool/test_tooling.py
+      - name: 准备 Android 工程、原始资源和可选签名
+        run: |
+          bash tool/bootstrap_android.sh
+          bash tool/prepare_signing.sh
+      - name: Release 前完整代码门禁
+        run: |
+          dart format --output=none lib test integration_test
+          flutter analyze --fatal-infos
+          flutter test test/store_test.dart test/webdav_test.dart test/app_widget_test.dart test/layout_collision_test.dart
+      - name: 构建最终 APK
+        run: |
+          flutter build apk --release
+          flutter build apk --release --split-per-abi
+      - name: 校验最终 APK
+        shell: bash
+        run: |
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)
+          test -x "$AAPT"
+          test -x "$APKSIGNER"
+          "$AAPT" dump badging "$APK" | tee build/apk-badging.txt
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | tee build/apk-signature.txt
+      - run: python3 -m pip install --disable-pip-version-check pillow
+      - name: 生成十二页 Golden 与静态视觉检查稿
+        run: |
+          flutter test --update-goldens test/visual_review_test.dart
+          python3 tool/build_static_visual_review.py
+      - name: 启用 KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+        working-directory: .
+      - name: 安装最终 APK、启动、点击四个主入口并进行十二页视觉巡检
+        uses: reactivecircus/android-emulator-runner@v2.37.0
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            cd app
+            bash tool/verify_release_apk.sh build/app/outputs/flutter-apk/app-release.apk
+            bash tool/run_android_visual_review.sh
+            flutter test integration_test/app_flow_test.dart -d emulator-5554
+      - name: 记录已实际通过的 Release 验证
+        shell: bash
+        run: |
+          cat > build/RELEASE_VALIDATION.md <<EOF
+          # Rainbow Cats Android Release 验证
+
+          - Commit: ${GITHUB_SHA}
+          - Actions Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - Source check: PASS
+          - Flutter analyze: PASS
+          - Unit / WebDAV / Widget / Layout tests: PASS
+          - Release APK build: PASS
+          - aapt / apksigner validation: PASS
+          - Pixel 6 API 35 install and launch: PASS
+          - Four bottom tabs smoke test: PASS
+          - 12-page visual review: PASS
+          - Integration test: PASS
+          - Fatal Logcat scan: PASS
+          EOF
       - name: 整理发布文件
         shell: bash
         run: |
+          rm -rf ../release
           mkdir -p ../release
           cp build/app/outputs/flutter-apk/app-release.apk ../release/rainbow-cats-android-universal.apk
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ../release/rainbow-cats-android-arm64-v8a.apk
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ../release/rainbow-cats-android-armeabi-v7a.apk
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk ../release/rainbow-cats-android-x86_64.apk
-          cd ../release
-          sha256sum *.apk > SHA256SUMS.txt
-      - uses: softprops/action-gh-release@v2
+          cp build/apk-badging.txt build/apk-signature.txt build/RELEASE_VALIDATION.md ../release/
+          cp ../FINAL_REPORT.md ../RELEASE_NOTES.md ../release/
+          (cd visual_review && zip -qr ../release/visual-review.zip goldens emulator release 2>/dev/null || true)
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            flutter --version
+            java -version 2>&1
+          } > ../release/BUILD_INFO.txt
+          (cd ../release && sha256sum *.apk > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: rainbow-cats-release-${{ github.sha }}
+          path: release
+          if-no-files-found: error
+          retention-days: 90
+      - name: 创建 GitHub Release 并上传经过安装验证的 APK
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          name: Rainbow Cats ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          body_path: RELEASE_NOTES.md
           generate_release_notes: true
           files: |
             release/*.apk
             release/SHA256SUMS.txt
+            release/BUILD_INFO.txt
+            release/RELEASE_VALIDATION.md
+            release/apk-badging.txt
+            release/apk-signature.txt
+            release/visual-review.zip
+            release/FINAL_REPORT.md
