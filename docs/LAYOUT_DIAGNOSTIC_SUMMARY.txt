@@ -1,0 +1,32 @@
+        '${pageNames[index]} 在 ${size.width}x${size.height} 无布局异常',
+                '${pageNames[index]} @ ${size.width}x${size.height} 出现布局/渲染异常',
+00:00 +0 -1: loading /home/runner/work/Rainbow-Cats-Personal-WeChat-MiniProgram/Rainbow-Cats-Personal-WeChat-MiniProgram/app/test/layout_collision_test.dart [E]
+          '${pageNames[index]} 在 ${size.width}x${size.height} 无布局异常',
+                  '${pageNames[index]} @ ${size.width}x${size.height} 出现布局/渲染异常',
+--- tail ---
+00:00 +0: loading /home/runner/work/Rainbow-Cats-Personal-WeChat-MiniProgram/Rainbow-Cats-Personal-WeChat-MiniProgram/app/test/layout_collision_test.dart
+test/layout_collision_test.dart:15:33: Error: Undefined name 'pageNames'.
+    for (int index = 0; index < pageNames.length; index += 1) {
+                                ^^^^^^^^^
+test/layout_collision_test.dart:17:12: Error: Undefined name 'pageNames'.
+        '${pageNames[index]} 在 ${size.width}x${size.height} 无布局异常',
+           ^^^^^^^^^
+test/layout_collision_test.dart:38:20: Error: Undefined name 'pageNames'.
+                '${pageNames[index]} @ ${size.width}x${size.height} 出现布局/渲染异常',
+                   ^^^^^^^^^
+00:00 +0 -1: loading /home/runner/work/Rainbow-Cats-Personal-WeChat-MiniProgram/Rainbow-Cats-Personal-WeChat-MiniProgram/app/test/layout_collision_test.dart [E]
+  Failed to load "/home/runner/work/Rainbow-Cats-Personal-WeChat-MiniProgram/Rainbow-Cats-Personal-WeChat-MiniProgram/app/test/layout_collision_test.dart":
+  Compilation failed for testPath=/home/runner/work/Rainbow-Cats-Personal-WeChat-MiniProgram/Rainbow-Cats-Personal-WeChat-MiniProgram/app/test/layout_collision_test.dart: test/layout_collision_test.dart:15:33: Error: Undefined name 'pageNames'.
+      for (int index = 0; index < pageNames.length; index += 1) {
+                                  ^^^^^^^^^
+  test/layout_collision_test.dart:17:12: Error: Undefined name 'pageNames'.
+          '${pageNames[index]} 在 ${size.width}x${size.height} 无布局异常',
+             ^^^^^^^^^
+  test/layout_collision_test.dart:38:20: Error: Undefined name 'pageNames'.
+                  '${pageNames[index]} @ ${size.width}x${size.height} 出现布局/渲染异常',
+                     ^^^^^^^^^
+  .
+00:00 +0 -1: Some tests failed.
+
+Failing tests:
+  /home/runner/work/Rainbow-Cats-Personal-WeChat-MiniProgram/Rainbow-Cats-Personal-WeChat-MiniProgram/app/test/layout_collision_test.dart: loading /home/runner/work/Rainbow-Cats-Personal-WeChat-MiniProgram/Rainbow-Cats-Personal-WeChat-MiniProgram/app/test/layout_collision_test.dart
