@@ -1,0 +1,106 @@
+name: Repair Member Dialog
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repair-member-dialog.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Repair member dialog without changing surrounding page
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('app/lib/src/settings_pages.dart')
+          s = p.read_text(encoding='utf-8')
+          start = s.index('  Future<_MemberFormValue?> _memberDialog(Member? member) async {')
+          end = s.index('\n\nclass PointLedgerPage', start)
+          replacement = r'''  Future<_MemberFormValue?> _memberDialog(
+            BuildContext context, {
+            required String title,
+            required String name,
+            required int credit,
+          }) async {
+            final TextEditingController nameController =
+                TextEditingController(text: name);
+            final TextEditingController creditController =
+                TextEditingController(text: credit.toString());
+            final DialogRoute<_MemberFormValue> route = DialogRoute<_MemberFormValue>(
+              context: context,
+              builder: (BuildContext dialogContext) => AlertDialog(
+                title: Text(title),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    TextField(
+                      key: const ValueKey<String>('member-name'),
+                      controller: nameController,
+                      maxLength: 12,
+                      autofocus: true,
+                      decoration: const InputDecoration(labelText: '名称'),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      key: const ValueKey<String>('member-credit'),
+                      controller: creditController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      decoration: const InputDecoration(labelText: '积分'),
+                    ),
+                  ],
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(
+                        dialogContext,
+                        _MemberFormValue(
+                          nameController.text,
+                          int.tryParse(creditController.text) ?? 0,
+                        ),
+                      );
+                    },
+                    child: const Text('保存'),
+                  ),
+                ],
+              ),
+            );
+            final _MemberFormValue? result = await Navigator.of(context).push(route);
+            await route.completed;
+            nameController.dispose();
+            creditController.dispose();
+            return result;
+          }
+
+          void _showResult(BuildContext context, ActionResult result) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(result.message)));
+          }
+        }'''
+          p.write_text(s[:start] + replacement + s[end:], encoding='utf-8')
+          PY
+          dart format app/lib/src/settings_pages.dart || true
+          git diff --check -- app/lib/src/settings_pages.dart
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/lib/src/settings_pages.dart
+          git commit -m "fix: preserve member editor API while waiting for dialog completion"
+          git push origin HEAD:main
