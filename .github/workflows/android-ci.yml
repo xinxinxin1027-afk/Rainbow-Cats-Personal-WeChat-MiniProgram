@@ -63,7 +63,17 @@ jobs:
       - name: Widget - 任务新增
         run: flutter test test/app_widget_test.dart --plain-name '任务新增后立即出现在任务列表' --reporter expanded
       - name: Widget - 成员新增
-        run: flutter test test/app_widget_test.dart --plain-name '成员管理支持新增第三名成员' --reporter expanded
+        shell: bash
+        run: |
+          set +e
+          flutter test test/app_widget_test.dart --plain-name '成员管理支持新增第三名成员' --reporter expanded > /tmp/member-widget.log 2>&1
+          status=$?
+          cat /tmp/member-widget.log
+          if [ "$status" -ne 0 ]; then
+            diagnostic=$(tail -c 7000 /tmp/member-widget.log | base64 -w0)
+            echo "::error file=test/app_widget_test.dart,title=member_widget_failure_base64::$diagnostic"
+          fi
+          exit "$status"
       - name: 多尺寸布局碰撞测试
         run: flutter test test/layout_collision_test.dart --reporter expanded
       - name: 构建 Debug APK
