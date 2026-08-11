@@ -1,0 +1,94 @@
+name: Delivery V2 Result
+
+on:
+  workflow_run:
+    workflows: ['Android Delivery V2']
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  verify-result:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Record failure details
+        if: ${{ github.event.workflow_run.conclusion != 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          {
+            echo '# Android 最终交付状态'
+            echo
+            echo '**FAIL**'
+            echo
+            echo "- Run: ${{ github.event.workflow_run.html_url }}"
+            echo "- Head: ${{ github.event.workflow_run.head_sha }}"
+            echo '- Failed steps:'
+            gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json jobs --jq '.jobs[] | .name as $j | .steps[] | select(.conclusion=="failure") | "  - \($j): \(.name)"' || true
+            echo
+            echo '```text'
+            gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed 2>/dev/null | tail -n 45 || true
+            echo '```'
+          } > docs/FINAL_DELIVERY_STATUS.md
+      - name: Independently download and verify public Release assets
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/release-check
+          mkdir -p /tmp/release-check
+          gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" --json url,tagName,targetCommitish,assets > /tmp/release.json
+          for name in \
+            rainbow-cats-android-universal.apk \
+            rainbow-cats-android-arm64-v8a.apk \
+            rainbow-cats-android-armeabi-v7a.apk \
+            rainbow-cats-android-x86_64.apk \
+            SHA256SUMS.txt \
+            RELEASE_VALIDATION.txt \
+            visual-review.zip; do
+            jq -e --arg n "$name" '.assets[] | select(.name==$n)' /tmp/release.json >/dev/null
+          done
+          gh release download v1.0.0 --repo "$GITHUB_REPOSITORY" --dir /tmp/release-check
+          cd /tmp/release-check
+          test -s rainbow-cats-android-universal.apk
+          unzip -t rainbow-cats-android-universal.apk >/tmp/apk-zip-test.txt
+          sha256sum -c SHA256SUMS.txt >/tmp/checksums.txt
+          apk_sha=$(sha256sum rainbow-cats-android-universal.apk | cut -d' ' -f1)
+          release_url=$(jq -r .url /tmp/release.json)
+          target=$(jq -r .targetCommitish /tmp/release.json)
+          cd "$GITHUB_WORKSPACE"
+          cat > docs/FINAL_DELIVERY_STATUS.md <<EOF
+          # Android 最终交付状态
+
+          **PASS**
+
+          - Release：v1.0.0
+          - Release URL：$release_url
+          - Release target：$target
+          - Delivery Run：${{ github.event.workflow_run.html_url }}
+          - Delivery Head：${{ github.event.workflow_run.head_sha }}
+          - universal / arm64-v8a / armeabi-v7a / x86_64 APK：✅
+          - Release APK 重新下载：✅
+          - APK ZIP 完整性：✅
+          - Release SHA256SUMS 全量复核：✅
+          - RELEASE_VALIDATION.txt：✅
+          - visual-review.zip：✅
+          - Universal APK SHA-256：$apk_sha
+          EOF
+      - name: Commit independent final status
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/FINAL_DELIVERY_STATUS.md
+          git commit -m "release: record independently verified Android v1.0.0 status" || true
+          git push origin HEAD:main || true
