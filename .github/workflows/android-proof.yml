@@ -1,0 +1,104 @@
+name: Android Proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/android-proof.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-proof-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.44.9'
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2.23.0
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Run all Android gates and persist concise proof
+        shell: bash
+        run: |
+          set -u
+          mkdir -p docs
+          proof=docs/ANDROID_PROOF.txt
+          : > "$proof"
+          run_stage() {
+            name="$1"; shift
+            echo "RUN $name"
+            set +e
+            "$@" > /tmp/stage.log 2>&1
+            status=$?
+            set -e
+            cat /tmp/stage.log
+            if [ "$status" -ne 0 ]; then
+              {
+                echo "FAIL"
+                echo "stage=$name"
+                echo "head_sha=$GITHUB_SHA"
+                echo "run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+                echo "--- log tail ---"
+                tail -n 45 /tmp/stage.log
+              } > "$proof"
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add "$proof"
+              git commit -m "test: record Android proof failure at $name"
+              git push origin HEAD:main
+              exit "$status"
+            fi
+          }
+          run_stage source_check python3 app/tool/static_source_check.py
+          run_stage tooling python3 app/tool/test_tooling.py
+          run_stage bootstrap bash -lc 'cd app && bash tool/bootstrap_android.sh'
+          run_stage format bash -lc 'cd app && dart format --output=none lib test integration_test'
+          run_stage analyze bash -lc 'cd app && flutter analyze --fatal-infos'
+          run_stage store bash -lc 'cd app && flutter test test/store_test.dart --reporter compact'
+          run_stage webdav bash -lc 'cd app && flutter test test/webdav_test.dart --reporter compact'
+          run_stage widget bash -lc 'cd app && flutter test test/app_widget_test.dart --reporter compact'
+          run_stage layout bash -lc 'cd app && flutter test test/layout_collision_test.dart --reporter compact'
+          run_stage debug_apk bash -lc 'cd app && flutter build apk --debug'
+          run_stage release_apk bash -lc 'cd app && flutter build apk --release'
+          run_stage apk_verify bash -lc 'set -e; APK=app/build/app/outputs/flutter-apk/app-release.apk; test -s "$APK"; AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1); APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1); "$AAPT" dump badging "$APK" >/tmp/badging; "$APKSIGNER" verify --verbose --print-certs "$APK" >/tmp/signature; sha256sum "$APK"'
+          sha=$(sha256sum app/build/app/outputs/flutter-apk/app-release.apk | cut -d' ' -f1)
+          {
+            echo "PASS"
+            echo "head_sha=$GITHUB_SHA"
+            echo "run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "source_check=PASS"
+            echo "tooling=PASS"
+            echo "format=PASS"
+            echo "analyze=PASS"
+            echo "store=PASS"
+            echo "webdav=PASS"
+            echo "widget=PASS"
+            echo "layout=PASS"
+            echo "debug_apk=PASS"
+            echo "release_apk=PASS"
+            echo "apk_verify=PASS"
+            echo "release_apk_sha256=$sha"
+          } > "$proof"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$proof"
+          git commit -m "test: record complete Android build proof"
+          git push origin HEAD:main
