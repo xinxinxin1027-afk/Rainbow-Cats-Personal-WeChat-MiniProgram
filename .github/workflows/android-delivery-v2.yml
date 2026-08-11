@@ -103,7 +103,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            set -euo pipefail
+            set -eu
             cd app
             APK=build/app/outputs/flutter-apk/app-release.apk
             AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)
@@ -119,15 +119,22 @@ jobs:
             adb shell pidof "$PACKAGE" | tee visual_review/release/pid.txt
             test -s visual_review/release/pid.txt
             size=$(adb shell wm size | sed -n 's/.*: \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)
-            read -r width height <<< "$size"
+            width=$(printf '%s\n' "$size" | awk '{print $1}')
+            height=$(printf '%s\n' "$size" | awk '{print $2}')
             test -n "$width"
+            test -n "$height"
             y=$((height - 110))
-            names=(main mission market account)
             for index in 0 1 2 3; do
+              case "$index" in
+                0) name=main ;;
+                1) name=mission ;;
+                2) name=market ;;
+                3) name=account ;;
+              esac
               x=$((width * (index * 2 + 1) / 8))
               adb shell input tap "$x" "$y"
               sleep 1
-              adb exec-out screencap -p > "visual_review/release/${names[$index]}.png"
+              adb exec-out screencap -p > "visual_review/release/$name.png"
               adb shell pidof "$PACKAGE" >/dev/null
             done
             adb shell am force-stop "$PACKAGE"
@@ -140,7 +147,7 @@ jobs:
               exit 1
             fi
             printf 'package=%s\nsize=%sx%s\nrelease_install=PASS\nrelease_launch=PASS\nfour_tabs=PASS\n' "$PACKAGE" "$width" "$height" > visual_review/release/release-proof.txt
-      - name: Run Flutter integration flow on the same Pixel 6 emulator
+      - name: Run Flutter integration flow on a Pixel 6 API 35 emulator
         id: integration
         uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
