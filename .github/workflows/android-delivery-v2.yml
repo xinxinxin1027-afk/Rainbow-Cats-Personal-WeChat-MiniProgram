@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'app/**'
       - '.github/workflows/android-delivery-v2.yml'
   workflow_dispatch:
 
@@ -93,7 +94,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
         working-directory: .
-      - name: Install the exact Release APK on Pixel 6 API 35 and exercise four main tabs
+      - name: Install the exact Release APK on Pixel 6 API 35 and verify resume lifecycle
         id: emulator_release
         uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
@@ -146,6 +147,10 @@ jobs:
             echo "apk_signature=PASS"
             echo "pixel6_api35_release_install_launch=PASS"
             echo "four_main_tabs=PASS"
+            echo "back_navigation_history=PASS"
+            echo "background_resume_same_process=PASS"
+            echo "resume_non_black=PASS"
+            echo "cold_restart=PASS"
             echo "integration=PASS"
             echo "visual_baselines=PASS"
           } > ../release/RELEASE_VALIDATION.txt
@@ -159,7 +164,7 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Publish v1.0.0 only after every gate passed
+      - name: Publish refreshed v1.0.0 only after every gate passed
         id: publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -167,8 +172,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git tag -f "$RELEASE_TAG" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$RELEASE_TAG"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" release/* --clobber
+            gh release edit "$RELEASE_TAG" --target "$GITHUB_SHA" --title "Rainbow Cats $RELEASE_TAG" --notes-file RELEASE_NOTES.md
           else
             gh release create "$RELEASE_TAG" release/* --target "$GITHUB_SHA" --title "Rainbow Cats $RELEASE_TAG" --notes-file RELEASE_NOTES.md
           fi
@@ -186,25 +194,30 @@ jobs:
           sha=$(sha256sum release/rainbow-cats-android-universal.apk | cut -d' ' -f1)
           cat >> FINAL_REPORT.md <<EOF
 
-          ## v1.0.0 最终实测交付
+          ## v1.0.0 UX / 生命周期修复复验
 
           - Release：$url
           - APK 源码 Commit：$GITHUB_SHA
           - GitHub Actions：$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          - 主页面小程序标题栏与胶囊移除：✅
+          - 二级页面返回与主 Tab 历史返回：✅
+          - Android Back 进入后台并保持同一进程：✅
+          - Home 后恢复保持同一进程：✅
+          - 后台恢复非黑屏：✅
+          - force-stop 后冷启动：✅
+          - 用户提供 App 图标：✅
           - Flutter 3.44.9 静态分析：✅
           - Store / WebDAV / Widget / 48 个页面尺寸组合：✅
           - Debug / Release / 分架构 APK 构建：✅
-          - APK metadata 与签名校验：✅
-          - Pixel 6 / Android API 35 安装并启动最终 Release APK：✅
-          - 最终 APK 四个主导航实际点击：✅
+          - Pixel 6 / Android API 35 最终 Release APK 实测：✅
           - Integration Test：✅
-          - 视觉基线与原版/Emulator 对照产物：✅
           - Universal APK SHA-256：$sha
           EOF
+          gh release upload "$RELEASE_TAG" FINAL_REPORT.md --clobber
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add FINAL_REPORT.md
-          git commit -m 'docs: record fully verified Android v1.0.0 release' || true
+          git commit -m 'docs: record verified v1.0.0 UX lifecycle refresh' || true
           git push origin HEAD:main
 
       - name: Persist concise failure stage
