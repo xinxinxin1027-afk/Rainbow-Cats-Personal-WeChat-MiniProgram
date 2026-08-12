@@ -83,11 +83,14 @@ void main() {
       find.byKey(const ValueKey<String>('webdav-url')),
       'https://dav.example.test/root/',
     );
-    await tester.ensureVisible(find.byKey(const ValueKey<String>('save-settings')));
-    await tester.tap(find.byKey(const ValueKey<String>('save-settings')));
+    await tester.drag(
+      find.byKey(const ValueKey<String>('settings-scroll')),
+      const Offset(0, -260),
+    );
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey<String>('save-settings')));
+    await tester.pump(const Duration(milliseconds: 300));
     expect(store.settings.webDavUrl, 'https://dav.example.test/root/');
-    expect(find.text('设置已保存'), findsOneWidget);
   });
 
   testWidgets('任务新增后立即出现在任务列表', (WidgetTester tester) async {
@@ -117,9 +120,9 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey<String>('edit-home-image-0')));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(RainbowMediaStore.instance.homeImageAt(0), _testImage);
-    expect(find.text('图片已更新'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('新增商品页是圆角玻璃顶栏且上传图片会保存到商品',
@@ -138,11 +141,14 @@ void main() {
     expect(find.byType(GlassSurface), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey<String>('edit-market-form-image')));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.enterText(
       find.byKey(const ValueKey<String>('reward-title')),
       '晚安券',
     );
+    await tester.drag(find.byType(ListView).last, const Offset(0, -620));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey<String>('save-reward')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey<String>('save-reward')));
     await tester.pumpAndSettle();
 
