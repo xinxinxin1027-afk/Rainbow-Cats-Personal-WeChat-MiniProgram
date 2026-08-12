@@ -141,6 +141,7 @@ void main() {
     expect(find.byType(GlassSurface), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey<String>('edit-market-form-image')));
+    await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const ValueKey<String>('reward-title')),
