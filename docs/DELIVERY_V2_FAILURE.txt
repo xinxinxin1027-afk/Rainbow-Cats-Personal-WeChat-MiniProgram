@@ -1,0 +1,13 @@
+run=https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/actions/runs/31619210546
+head_sha=a32cee0446e12bb2a2fd21170bb86ec9a1209aa8
+prepare=success
+analyze=success
+tests=success
+build=failure
+verify=skipped
+golden=skipped
+emulator_release=skipped
+integration=skipped
+comparison=skipped
+package=skipped
+publish=skipped
