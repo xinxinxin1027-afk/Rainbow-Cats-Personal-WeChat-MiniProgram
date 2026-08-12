@@ -3,17 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'generated/original_style.dart';
+import 'src/media.dart';
 import 'src/pages.dart';
 import 'src/settings_pages.dart';
 import 'src/store.dart';
 import 'src/theme.dart';
 import 'src/webdav.dart';
+import 'src/widgets.dart';
 
 const bool _visualReview =
     bool.fromEnvironment('VISUAL_REVIEW', defaultValue: false);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await RainbowMediaStore.instance.initialize();
   final RainbowStore store = RainbowStore(
     _visualReview ? MemoryRainbowStorage() : SharedPreferencesRainbowStorage(),
     clock: _visualReview ? () => DateTime(2026, 8, 11, 12) : null,
@@ -55,13 +58,13 @@ class RainbowCatsApp extends StatelessWidget {
         title: OriginalStyle.appTitle,
         debugShowCheckedModeBanner: false,
         theme: RainbowTheme.light,
+        builder: (BuildContext context, Widget? child) => LiquidBackground(
+          child: child ?? const SizedBox.shrink(),
+        ),
         routes: <String, WidgetBuilder>{
           '/settings': (_) => SettingsPage(store: store),
-          '/members': (_) => MemberManagementPage(store: store),
           '/ledger': (_) => PointLedgerPage(store: store),
         },
-        // Keep MaterialApp/Navigator stable while dialogs and popup routes animate.
-        // Only rebuild the application content when the lightweight store changes.
         home: AnimatedBuilder(
           animation: store,
           builder: (BuildContext context, _) => visualReview
