@@ -74,7 +74,9 @@ class _RainbowShellState extends State<RainbowShell> {
         ),
         bottomNavigationBar: RainbowBottomBar(
           index: _index,
-          onChanged: widget.lockedIndex ? (_) {} : _setIndex,
+          onChanged: widget.lockedIndex
+              ? (int ignoredIndex) {}
+              : _setIndex,
         ),
       ),
     );
@@ -240,7 +242,10 @@ class _IdentitySwitchButton extends StatelessWidget {
       ),
     );
     if (selected == null || selected == store.currentUserId) return;
-    await store.switchUserTo(selected);
+
+    // 当前产品严格只有两个人，所以选择另一个身份等价于执行一次切换。
+    // 使用既有 Store API，确保身份变化和本地持久化仍沿用原来的事务路径。
+    await store.switchUser();
     onChanged();
   }
 }
