@@ -31,19 +31,19 @@ abstract final class RainbowTheme {
       textTheme: const TextTheme(
         headlineSmall: TextStyle(
           fontSize: 22,
-          fontWeight: FontWeight.w750,
+          fontWeight: FontWeight.w700,
           letterSpacing: -.25,
           color: RainbowDesign.text,
         ),
         titleLarge: TextStyle(
           fontSize: 19,
-          fontWeight: FontWeight.w750,
+          fontWeight: FontWeight.w700,
           letterSpacing: -.2,
           color: RainbowDesign.text,
         ),
         titleMedium: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w650,
+          fontWeight: FontWeight.w600,
           color: RainbowDesign.text,
         ),
         bodyLarge: TextStyle(
