@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 
-import '../generated/original_style.dart';
+import 'design.dart';
 
 abstract final class RainbowTheme {
   static ThemeData get light {
     const ColorScheme scheme = ColorScheme.light(
-      primary: OriginalStyle.primary,
-      secondary: OriginalStyle.primaryDark,
-      surface: OriginalStyle.surface,
+      primary: RainbowDesign.accent,
+      onPrimary: Colors.white,
+      secondary: RainbowDesign.sage,
+      onSecondary: RainbowDesign.text,
+      surface: Colors.transparent,
+      onSurface: RainbowDesign.text,
+      error: RainbowDesign.danger,
+    );
+    final OutlineInputBorder inputBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(22),
+      borderSide: BorderSide(color: RainbowDesign.lineWarm.withAlpha(110)),
     );
     return ThemeData(
-      useMaterial3: false,
+      useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: OriginalStyle.background,
+      scaffoldBackgroundColor: Colors.transparent,
+      canvasColor: Colors.transparent,
+      splashFactory: InkSparkle.splashFactory,
       fontFamilyFallback: const <String>[
         'PingFang SC',
         'Noto Sans CJK SC',
@@ -20,57 +30,101 @@ abstract final class RainbowTheme {
       ],
       textTheme: const TextTheme(
         headlineSmall: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: OriginalStyle.text,
+          fontSize: 22,
+          fontWeight: FontWeight.w750,
+          letterSpacing: -.25,
+          color: RainbowDesign.text,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 19,
+          fontWeight: FontWeight.w750,
+          letterSpacing: -.2,
+          color: RainbowDesign.text,
         ),
         titleMedium: TextStyle(
           fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: OriginalStyle.text,
+          fontWeight: FontWeight.w650,
+          color: RainbowDesign.text,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 15,
+          height: 1.55,
+          color: RainbowDesign.text,
         ),
         bodyMedium: TextStyle(
           fontSize: 14,
-          height: 1.45,
-          color: OriginalStyle.text,
+          height: 1.5,
+          color: RainbowDesign.text,
         ),
+        labelLarge: TextStyle(fontWeight: FontWeight.w700),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: OriginalStyle.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(OriginalStyle.cardRadius),
-          borderSide: BorderSide.none,
+        fillColor: Colors.white.withAlpha(174),
+        border: inputBorder,
+        enabledBorder: inputBorder,
+        focusedBorder: inputBorder.copyWith(
+          borderSide: const BorderSide(color: RainbowDesign.accent, width: 1.5),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(OriginalStyle.cardRadius),
-          borderSide: const BorderSide(color: OriginalStyle.divider),
+        errorBorder: inputBorder.copyWith(
+          borderSide: const BorderSide(color: RainbowDesign.danger, width: 1.2),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(OriginalStyle.cardRadius),
-          borderSide: const BorderSide(
-            color: OriginalStyle.primary,
-            width: 1.4,
-          ),
+        focusedErrorBorder: inputBorder.copyWith(
+          borderSide: const BorderSide(color: RainbowDesign.danger, width: 1.5),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: const TextStyle(color: RainbowDesign.muted),
+        hintStyle: const TextStyle(color: Color(0xFFAAA69E)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 17, vertical: 16),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        backgroundColor: RainbowDesign.text.withAlpha(232),
+        contentTextStyle: const TextStyle(color: Colors.white),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       ),
       sliderTheme: SliderThemeData(
-        activeTrackColor: OriginalStyle.primary,
-        thumbColor: OriginalStyle.primary,
-        overlayColor: OriginalStyle.primary.withAlpha(30),
-        inactiveTrackColor: OriginalStyle.divider,
+        activeTrackColor: RainbowDesign.accent,
+        thumbColor: RainbowDesign.accent,
+        overlayColor: RainbowDesign.accent.withAlpha(28),
+        inactiveTrackColor: RainbowDesign.accentSoft,
+        trackHeight: 5,
+        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+          return states.contains(WidgetState.selected) ? Colors.white : null;
+        }),
+        trackColor: WidgetStateProperty.resolveWith<Color?>((Set<WidgetState> states) {
+          return states.contains(WidgetState.selected) ? RainbowDesign.accent : null;
+        }),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: const Color(0xFFFDFBF8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        modalBackgroundColor: Colors.transparent,
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: RainbowDesign.text,
+          backgroundColor: Colors.white.withAlpha(105),
+          side: BorderSide(color: Colors.white.withAlpha(150)),
+          minimumSize: const Size(0, 50),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: RainbowDesign.accentDeep,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: <TargetPlatform, PageTransitionsBuilder>{
-          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
         },
       ),
     );
