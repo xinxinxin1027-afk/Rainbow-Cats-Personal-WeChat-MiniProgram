@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'generated/original_style.dart';
+import 'src/dual_mode.dart';
 import 'src/media.dart';
 import 'src/pages.dart';
 import 'src/settings_pages.dart';
@@ -25,6 +26,7 @@ Future<void> main() async {
     store.seedForTest();
   } else {
     await store.initialize();
+    await store.enforceDualUserMode();
   }
   runApp(RainbowCatsApp(store: store, visualReview: _visualReview));
   if (!_visualReview &&
@@ -37,6 +39,7 @@ Future<void> main() async {
 Future<void> _runStartupSync(RainbowStore store) async {
   try {
     final RemoteOperationResult result = await WebDavClient().synchronize(store);
+    if (result.ok) await store.enforceDualUserMode();
     store.recordSyncResult(ok: result.ok, message: result.message);
   } on Object catch (error) {
     store.recordSyncResult(ok: false, message: '启动同步失败：$error');
