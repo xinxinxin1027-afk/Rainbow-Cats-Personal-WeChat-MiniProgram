@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+export 'dart:typed_data' show Uint8List;
+
 /// Rainbow Cats 2026 视觉系统。
 ///
 /// 参考了 dwell-on-something 的暖纸张色、轻描边和玻璃层级，
@@ -53,22 +55,22 @@ abstract final class RainbowDesign {
         ],
       );
 
-  static LinearGradient get accentGradient => const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: <Color>[
-          Color(0xFFF09AAF),
-          Color(0xFFE17D98),
-        ],
-      );
+  static const LinearGradient accentGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: <Color>[
+      Color(0xFFF09AAF),
+      Color(0xFFE17D98),
+    ],
+  );
 
-  static LinearGradient get warmBackdropGradient => const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: <Color>[
-          Color(0xFFFCFBF8),
-          Color(0xFFFFF7F7),
-          Color(0xFFFAF8F4),
-        ],
-      );
+  static const LinearGradient warmBackdropGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: <Color>[
+      Color(0xFFFCFBF8),
+      Color(0xFFFFF7F7),
+      Color(0xFFFAF8F4),
+    ],
+  );
 }
