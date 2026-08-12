@@ -105,7 +105,8 @@ class ToolingTest(unittest.TestCase):
             app = repo / 'app'
             self._copy_tool(repo, 'patch_android.py')
             (app / 'assets').mkdir(parents=True)
-            (app / 'assets/app_icon.png').write_bytes(b'uploaded-app-icon')
+            (app / 'assets/app_icon.png').write_bytes(b'uploaded-png-source')
+            (app / 'assets/app_icon.webp').write_bytes(b'RIFF\x10\x00\x00\x00WEBPfixture')
             manifest = app / 'android/app/src/main/AndroidManifest.xml'
             manifest.parent.mkdir(parents=True)
             manifest.write_text(
@@ -132,8 +133,11 @@ class ToolingTest(unittest.TestCase):
             self.assertIn('android:usesCleartextTraffic="true"', patched)
             self.assertIn('android:icon="@drawable/app_icon"', patched)
             self.assertEqual(
-                (app / 'android/app/src/main/res/drawable-nodpi/app_icon.png').read_bytes(),
-                b'uploaded-app-icon',
+                (app / 'android/app/src/main/res/drawable-nodpi/app_icon.webp').read_bytes(),
+                b'RIFF\x10\x00\x00\x00WEBPfixture',
+            )
+            self.assertFalse(
+                (app / 'android/app/src/main/res/drawable-nodpi/app_icon.png').exists()
             )
             self.assertTrue(
                 (app / 'android/app/src/main/res/drawable/launch_background.xml').exists()
@@ -160,16 +164,22 @@ class ToolingTest(unittest.TestCase):
         manifest = (
             app / 'android/app/src/main/AndroidManifest.xml'
         ).read_text(encoding='utf-8')
-        icon = app / 'assets/app_icon.png'
+        png = app / 'assets/app_icon.png'
+        webp = app / 'assets/app_icon.webp'
         self.assertIn('version "9.0.1"', settings)
         self.assertIn('version "2.3.20"', settings)
         self.assertIn('gradle-9.1.0-bin.zip', wrapper)
         self.assertIn('downloads.gradle.org/distributions/gradle-9.1.0-bin.zip', wrapper)
         self.assertIn('android.permission.INTERNET', manifest)
         self.assertIn('android:usesCleartextTraffic="true"', manifest)
-        self.assertTrue(icon.is_file())
-        self.assertEqual(icon.read_bytes()[:8], b'\x89PNG\r\n\x1a\n')
-        self.assertGreater(icon.stat().st_size, 1000)
+        self.assertTrue(png.is_file())
+        self.assertEqual(png.read_bytes()[:8], b'\x89PNG\r\n\x1a\n')
+        self.assertGreater(png.stat().st_size, 1000)
+        self.assertTrue(webp.is_file())
+        data = webp.read_bytes()
+        self.assertEqual(data[:4], b'RIFF')
+        self.assertEqual(data[8:12], b'WEBP')
+        self.assertGreater(webp.stat().st_size, 1000)
 
 
 if __name__ == '__main__':

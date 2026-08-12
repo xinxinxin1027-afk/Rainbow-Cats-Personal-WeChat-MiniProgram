@@ -31,13 +31,20 @@ text = text.replace(
 )
 manifest.write_text(text, encoding="utf-8")
 
-# App 图标固定使用用户提供的情侣图标，不再从旧小程序资源里猜图。
-icon_source = APP / "assets/app_icon.png"
-if not icon_source.is_file():
+# 保留用户上传的 PNG 作为图标源；Android 资源使用其无损 WebP 派生文件。
+# 某些 AAPT2 版本会在这张 PNG 的资源编译阶段异常退出，WebP 可稳定规避该解析路径。
+png_source = APP / "assets/app_icon.png"
+webp_source = APP / "assets/app_icon.webp"
+if not png_source.is_file():
     raise SystemExit("缺少 assets/app_icon.png")
-icon_target = ANDROID / "app/src/main/res/drawable-nodpi/app_icon.png"
-icon_target.parent.mkdir(parents=True, exist_ok=True)
-shutil.copyfile(icon_source, icon_target)
+if not webp_source.is_file():
+    raise SystemExit("缺少 assets/app_icon.webp")
+icon_dir = ANDROID / "app/src/main/res/drawable-nodpi"
+icon_dir.mkdir(parents=True, exist_ok=True)
+stale_png = icon_dir / "app_icon.png"
+if stale_png.exists():
+    stale_png.unlink()
+shutil.copyfile(webp_source, icon_dir / "app_icon.webp")
 
 # 根页面已移除小程序顶部栏，系统状态栏改为浅色背景 + 深色图标。
 styles = ANDROID / "app/src/main/res/values/styles.xml"
