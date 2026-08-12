@@ -10,6 +10,26 @@ import 'package:rainbow_cats/src/widgets.dart';
 const String _image =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZeeQAAAAASUVORK5CYII=';
 
+Future<void> _reveal(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      260,
+      scrollable: find.byType(Scrollable).last,
+    );
+  } else {
+    await tester.ensureVisible(finder);
+  }
+  await tester.pumpAndSettle();
+  expect(finder, findsOneWidget);
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await _reveal(tester, finder);
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('生成完整交互视觉状态画廊', (WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(393, 852));
@@ -73,13 +93,15 @@ void main() {
       '晚饭后走二十分钟',
     );
     await shot('16-mission-form-filled');
-    await tester.tap(find.byKey(const ValueKey<String>('save-mission')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('save-mission')),
+    );
     await shot('17-mission-created');
     await tester.tap(find.text('一起散步'));
     await tester.pumpAndSettle();
     await shot('18-mission-detail');
-    await tester.pageBack();
+    await tester.tap(find.byKey(const ValueKey<String>('top-back')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-2')));
@@ -99,35 +121,39 @@ void main() {
       '兑换一个不限时长的抱抱',
     );
     await shot('21-market-add-image-filled');
-    await tester.tap(find.byKey(const ValueKey<String>('save-reward')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('save-reward')),
+    );
     await shot('22-market-created');
     await tester.tap(find.text('抱抱券'));
     await tester.pumpAndSettle();
     await shot('23-market-detail');
-    await tester.pageBack();
+    await tester.tap(find.byKey(const ValueKey<String>('top-back')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-3')));
     await tester.pumpAndSettle();
     await shot('24-account-dual');
-    await tester.tap(find.byKey(const ValueKey<String>('open-settings')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('open-settings')),
+    );
     await shot('25-settings-top');
     final Finder restore = find.byKey(const ValueKey<String>('webdav-restore'));
-    await tester.ensureVisible(restore);
-    await tester.tap(restore);
-    await tester.pumpAndSettle();
+    await _tapVisible(tester, restore);
     await shot('26-settings-restore-dialog');
     await tester.tap(find.byKey(const ValueKey<String>('dialog-cancel')));
     await tester.pumpAndSettle();
-    await tester.pageBack();
+    await tester.tap(find.byKey(const ValueKey<String>('top-back')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey<String>('open-ledger')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('open-ledger')),
+    );
     await shot('27-point-ledger');
-    await tester.pageBack();
+    await tester.tap(find.byKey(const ValueKey<String>('top-back')));
     await tester.pumpAndSettle();
 
     final InventoryItem? inventory = store.currentInventory.firstOrNull;
@@ -141,13 +167,17 @@ void main() {
       await tester.pumpAndSettle();
       await shot('28-item-detail');
       if (!inventory.used) {
-        await tester.tap(find.byKey(const ValueKey<String>('use-inventory')));
-        await tester.pumpAndSettle();
+        await _tapVisible(
+          tester,
+          find.byKey(const ValueKey<String>('use-inventory')),
+        );
         await shot('29-item-use-dialog');
-        await tester.tap(find.byKey(const ValueKey<String>('cancel-use-inventory')));
+        await tester.tap(
+          find.byKey(const ValueKey<String>('cancel-use-inventory')),
+        );
         await tester.pumpAndSettle();
       }
-      await tester.pageBack();
+      await tester.tap(find.byKey(const ValueKey<String>('top-back')));
       await tester.pumpAndSettle();
     }
 
@@ -164,8 +194,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       await shot('30-buyable-reward');
-      await tester.tap(find.byKey(const ValueKey<String>('buy-reward')));
-      await tester.pumpAndSettle();
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey<String>('buy-reward')),
+      );
       await shot('31-reward-after-buy');
     }
   });
