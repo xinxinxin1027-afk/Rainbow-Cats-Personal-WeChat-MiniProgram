@@ -4,6 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+extension RainbowIterableFirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
+}
+
 /// 图片选择入口。生产环境走系统相册；测试环境可注入固定图片，
 /// 从而在不弹系统选择器的情况下覆盖每一个图片编辑按钮。
 abstract final class RainbowImagePicker {
