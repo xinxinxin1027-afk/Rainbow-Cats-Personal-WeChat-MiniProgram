@@ -184,3 +184,22 @@ Release 工作流会重新执行上述门禁，并额外执行：
 - Integration Test：✅
 - 视觉基线与原版/Emulator 对照产物：✅
 - Universal APK SHA-256：840fb28a91bf57ffaddf1f93c75c383ba12ea8441d3604c04441476c9ba8ba06
+
+## v1.0.0 UX / 生命周期修复复验
+
+- Release：https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/releases/tag/v1.0.0
+- APK 源码 Commit：ad7bfcd02bd0eb41ae7ae323828f2da61dd1d0c2
+- GitHub Actions：https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/actions/runs/31623208612
+- 主页面小程序标题栏与胶囊移除：✅
+- 二级页面返回与主 Tab 历史返回：✅
+- Android Back 进入后台并保持同一进程：✅
+- Home 后恢复保持同一进程：✅
+- 后台恢复非黑屏：✅
+- force-stop 后冷启动：✅
+- 用户提供 App 图标：✅
+- Flutter 3.44.9 静态分析：✅
+- Store / WebDAV / Widget / 48 个页面尺寸组合：✅
+- Debug / Release / 分架构 APK 构建：✅
+- Pixel 6 / Android API 35 最终 Release APK 实测：✅
+- Integration Test：✅
+- Universal APK SHA-256：40181c0238b1ebac30fb0539b4f358a6b56148098f66d628d08b1f5131a25c73
