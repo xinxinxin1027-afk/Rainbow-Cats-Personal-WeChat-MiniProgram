@@ -26,7 +26,7 @@ concurrency:
 jobs:
   deliver:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
     defaults:
       run:
         working-directory: app
@@ -51,24 +51,29 @@ jobs:
           python3 tool/test_tooling.py
           bash tool/bootstrap_android.sh
           bash tool/prepare_signing.sh
+
       - name: Strict Dart formatting and analysis
         id: analyze
         run: |
           dart format --output=none --set-exit-if-changed lib test integration_test
           flutter analyze --fatal-infos
-      - name: Core / WebDAV / Widget / responsive layout tests
+
+      - name: Core / WebDAV / glass UI / all-button / 55-layout tests
         id: tests
         run: |
           flutter test test/store_test.dart --reporter compact
           flutter test test/webdav_test.dart --reporter compact
           flutter test test/app_widget_test.dart --reporter compact
+          flutter test test/button_matrix_test.dart --reporter compact
           flutter test test/layout_collision_test.dart --reporter compact
+
       - name: Build Debug, universal Release and split Release APKs
         id: build
         run: |
           flutter build apk --debug
           flutter build apk --release
           flutter build apk --release --split-per-abi
+
       - name: Verify APK metadata, signature and checksum
         id: verify
         shell: bash
@@ -82,18 +87,31 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "$APK" | tee build/apk-signature.txt
           sha256sum "$APK" | tee build/app-release.apk.sha256
 
-      - name: Generate all 12 Flutter visual baselines
+      - name: Generate page and interaction screenshots, then visually recognize them
         id: golden
         run: |
-          flutter test --update-goldens test/visual_review_test.dart
+          set -euo pipefail
+          rm -rf visual_review/goldens visual_review/interactions
+          mkdir -p visual_review/goldens visual_review/interactions
+          flutter test --update-goldens test/visual_review_test.dart --reporter compact
+          flutter test --update-goldens test/interaction_visual_test.dart --reporter compact
           python3 -m pip install --disable-pip-version-check pillow
+          count=$(find visual_review/goldens visual_review/interactions -type f -name '*.png' | wc -l)
+          echo "$count" | tee visual_review/SCREENSHOT_COUNT.txt
+          test "$count" -ge 20
+          test "$count" -lt 100
+          python3 tool/inspect_ui_gallery.py
           python3 tool/build_static_visual_review.py
+          test -s visual_review/visual-review-contact-sheet.png
+          test -s visual_review/UI_VISUAL_RECOGNITION.txt
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
         working-directory: .
+
       - name: Install the exact Release APK on Pixel 6 API 35 and verify resume lifecycle
         id: emulator_release
         uses: reactivecircus/android-emulator-runner@v2.37.0
@@ -104,7 +122,8 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: sh app/tool/verify_release_on_emulator.sh
-      - name: Run Flutter integration flow on a Pixel 6 API 35 emulator
+
+      - name: Run complete Flutter integration flow on a Pixel 6 API 35 emulator
         id: integration
         uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
@@ -114,12 +133,16 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: cd app && flutter test integration_test/app_flow_test.dart -d emulator-5554
-      - name: Build original-versus-release visual comparison
+
+      - name: Collect emulator evidence into the visual review package
         id: comparison
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p visual_review/emulator
-          cp visual_review/release/*.png visual_review/emulator/ || true
-          python3 tool/build_visual_comparison.py
+          cp visual_review/release/*.png visual_review/emulator/ 2>/dev/null || true
+          test -s visual_review/release/release-proof.txt
+          python3 tool/build_static_visual_review.py
 
       - name: Package verified release
         id: package
@@ -134,14 +157,31 @@ jobs:
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk ../release/rainbow-cats-android-x86_64.apk
           cp build/apk-badging.txt build/apk-signature.txt ../release/
           cp ../FINAL_REPORT.md ../RELEASE_NOTES.md ../release/
+          cp ../docs/UI_REFERENCE_NOTICES.md ../release/
           cp visual_review/release/release-proof.txt ../release/
+          cp visual_review/UI_VISUAL_RECOGNITION.txt ../release/
+          cp visual_review/SCREENSHOT_COUNT.txt ../release/
+          cp visual_review/visual-review-contact-sheet.png ../release/
+          screenshot_count=$(cat visual_review/SCREENSHOT_COUNT.txt)
           {
             echo "source_commit=$GITHUB_SHA"
             echo "actions_run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo "flutter=$FLUTTER_VERSION"
             echo "analyze=PASS"
-            echo "tests=PASS"
-            echo "48_layout_checks=PASS"
+            echo "store_webdav_tests=PASS"
+            echo "glass_widget_tests=PASS"
+            echo "button_matrix=PASS"
+            echo "55_layout_checks=PASS"
+            echo "liquid_glass_ui=PASS"
+            echo "rounded_components=PASS"
+            echo "member_management_removed=PASS"
+            echo "dual_user_mode=PASS"
+            echo "editable_images=PASS"
+            echo "visual_screenshot_count=$screenshot_count"
+            echo "visual_screenshot_count_lt_100=PASS"
+            echo "visual_recognition=PASS"
+            echo "old_solid_pink_header_absent=PASS"
+            echo "blank_black_screen_visual_check=PASS"
             echo "debug_apk=PASS"
             echo "release_apk=PASS"
             echo "apk_signature=PASS"
@@ -152,14 +192,13 @@ jobs:
             echo "resume_non_black=PASS"
             echo "cold_restart=PASS"
             echo "integration=PASS"
-            echo "visual_baselines=PASS"
           } > ../release/RELEASE_VALIDATION.txt
-          (cd visual_review && zip -qr ../../release/visual-review.zip goldens release comparison 2>/dev/null || zip -qr ../../release/visual-review.zip .)
+          (cd visual_review && zip -qr ../../release/visual-review.zip .)
           (cd ../release && sha256sum *.apk > SHA256SUMS.txt)
 
       - uses: actions/upload-artifact@v7
         with:
-          name: rainbow-cats-v1-verified-${{ github.sha }}
+          name: rainbow-cats-v1-ui-verified-${{ github.sha }}
           path: release
           if-no-files-found: error
           retention-days: 90
@@ -182,7 +221,7 @@ jobs:
           fi
           gh release view "$RELEASE_TAG" --json url,tagName,targetCommitish,assets > release/GITHUB_RELEASE.json
 
-      - name: Record verified delivery in FINAL_REPORT
+      - name: Record verified UI delivery in FINAL_REPORT
         id: report
         env:
           GH_TOKEN: ${{ github.token }}
@@ -192,32 +231,35 @@ jobs:
           set -euo pipefail
           url=$(gh release view "$RELEASE_TAG" --json url --jq .url)
           sha=$(sha256sum release/rainbow-cats-android-universal.apk | cut -d' ' -f1)
+          screenshot_count=$(cat release/SCREENSHOT_COUNT.txt)
           cat >> FINAL_REPORT.md <<EOF
 
-          ## v1.0.0 UX / 生命周期修复复验
+          ## v1.0.0 液态玻璃 UI 全量重构复验
 
           - Release：$url
           - APK 源码 Commit：$GITHUB_SHA
           - GitHub Actions：$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
-          - 主页面小程序标题栏与胶囊移除：✅
-          - 二级页面返回与主 Tab 历史返回：✅
-          - Android Back 进入后台并保持同一进程：✅
-          - Home 后恢复保持同一进程：✅
-          - 后台恢复非黑屏：✅
-          - force-stop 后冷启动：✅
-          - 用户提供 App 图标：✅
-          - Flutter 3.44.9 静态分析：✅
-          - Store / WebDAV / Widget / 48 个页面尺寸组合：✅
-          - Debug / Release / 分架构 APK 构建：✅
-          - Pixel 6 / Android API 35 最终 Release APK 实测：✅
-          - Integration Test：✅
+          - dwell-on-something 暖色 / 圆角视觉体系迁移：✅
+          - Flutter 独立液态玻璃（模糊、高光、透明层、柔和阴影）：✅
+          - 旧整块粉色添加页顶栏移除：✅
+          - 全局圆角卡片 / 输入框 / 顶栏 / 底栏：✅
+          - 成员管理 UI / 路由移除：✅
+          - 旧多人数据自动收敛到两人：✅
+          - 首页轮播、双方头像、商城、仓库图片右下角半透明编辑：✅
+          - 系统图片选择与本地持久化：✅
+          - 全功能按钮矩阵：✅
+          - 11 页面 × 5 尺寸 = 55 个布局组合：✅
+          - 页面 + 交互视觉截图：$screenshot_count 张（<100）：✅
+          - 自动视觉识别：无白屏 / 黑屏 / 旧整宽粉色顶栏：✅
+          - Pixel 6 / Android API 35 Release APK 生命周期与 Integration Test：✅
+          - Debug / Universal Release / 分架构 APK：✅
           - Universal APK SHA-256：$sha
           EOF
           gh release upload "$RELEASE_TAG" FINAL_REPORT.md --clobber
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add FINAL_REPORT.md
-          git commit -m 'docs: record verified v1.0.0 UX lifecycle refresh' || true
+          git commit -m 'docs: record fully verified liquid-glass UI delivery' || true
           git push origin HEAD:main
 
       - name: Persist concise failure stage
@@ -244,7 +286,7 @@ jobs:
           tests=$TESTS
           build=$BUILD
           verify=$VERIFY
-          golden=$GOLDEN
+          visual=$GOLDEN
           emulator_release=$EMULATOR_RELEASE
           integration=$INTEGRATION
           comparison=$COMPARISON
