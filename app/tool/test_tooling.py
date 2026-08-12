@@ -160,11 +160,15 @@ class ToolingTest(unittest.TestCase):
         manifest = (
             app / 'android/app/src/main/AndroidManifest.xml'
         ).read_text(encoding='utf-8')
+        icon = app / 'assets/app_icon.png'
         self.assertIn('version "9.0.1"', settings)
         self.assertIn('version "2.3.20"', settings)
         self.assertIn('gradle-9.1.0-all.zip', wrapper)
         self.assertIn('android.permission.INTERNET', manifest)
         self.assertIn('android:usesCleartextTraffic="true"', manifest)
+        self.assertTrue(icon.is_file())
+        self.assertEqual(icon.read_bytes()[:8], b'\x89PNG\r\n\x1a\n')
+        self.assertGreater(icon.stat().st_size, 1000)
 
 
 if __name__ == '__main__':
