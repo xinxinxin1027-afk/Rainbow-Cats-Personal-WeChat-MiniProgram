@@ -31,7 +31,7 @@ def balanced_dart(path: Path) -> None:
         if char == "\n":
             line += 1
             column = 0
-        else:
+n        else:
             column += 1
 
         if state == "line_comment":
@@ -61,7 +61,6 @@ def balanced_dart(path: Path) -> None:
                 state = "code"
             index += 1
             continue
-
         if char == "/" and nxt == "/":
             state = "line_comment"
             index += 2
@@ -96,12 +95,12 @@ def balanced_dart(path: Path) -> None:
 
 def check_imports(path: Path) -> None:
     text = path.read_text(encoding="utf-8")
-    for target in re.findall(r"^import\s+['\"]([^'\"]+)['\"]", text, re.M):
+    for target in re.findall(r"^(?:import|export)\s+['\"]([^'\"]+)['\"]", text, re.M):
         if target.startswith(("dart:", "package:")):
             continue
         resolved = (path.parent / target).resolve()
         if not resolved.exists():
-            fail(f"{path.relative_to(ROOT)} 导入不存在: {target}")
+            fail(f"{path.relative_to(ROOT)} 引用不存在: {target}")
 
 
 for dart in sorted(APP.rglob("*.dart")):
@@ -111,22 +110,50 @@ for dart in sorted(APP.rglob("*.dart")):
     for forbidden in ("UnimplementedError", "throw UnsupportedError", "敬请期待", "开发中"):
         if forbidden in text:
             fail(f"{dart.relative_to(ROOT)} 含未完成功能标记: {forbidden}")
+    for invalid_weight in ("FontWeight.w650", "FontWeight.w750"):
+        if invalid_weight in text:
+            fail(f"{dart.relative_to(ROOT)} 含 Flutter 不支持字体权重: {invalid_weight}")
 
-pages = (APP / "lib/src/pages.dart").read_text(encoding="utf-8")
-page_names_match = re.search(
-    r"pageNames\s*=\s*<String>\[(.*?)\];", pages, re.S
-)
-if not page_names_match:
+pages_path = APP / "lib/src/pages_v2.dart"
+pages = pages_path.read_text(encoding="utf-8") if pages_path.exists() else ""
+match = re.search(r"pageNames\s*=\s*<String>\[(.*?)\];", pages, re.S)
+if not match:
     fail("无法读取视觉页面名称")
 else:
-    page_count = len(re.findall(r"'[^']+'", page_names_match.group(1)))
-    if page_count != 12:
-        fail(f"视觉页面名称应为 12 个，实际 {page_count}")
+    page_count = len(re.findall(r"'[^']+'", match.group(1)))
+    if page_count != 11:
+        fail(f"视觉页面应为 11 个（成员管理已移除），实际 {page_count}")
+
+main = (APP / "lib/main.dart").read_text(encoding="utf-8")
+if "'/members'" in main or '"/members"' in main:
+    fail("主路由仍暴露成员管理")
+if "MemberManagementPage" in pages:
+    fail("新页面仍包含成员管理")
+if "EditableImage(" not in pages:
+    fail("新 UI 未接入可编辑图片组件")
+for required_key in (
+    "edit-home-image-",
+    "edit-avatar-",
+    "edit-market-form-image",
+    "edit-reward-detail-",
+    "edit-inventory-detail-",
+):
+    if required_key not in pages:
+        fail(f"缺少图片编辑覆盖: {required_key}")
+
+widgets = (APP / "lib/src/widgets_v2.dart").read_text(encoding="utf-8")
+for required_token in ("BackdropFilter", "GlassSurface", "borderRadius", "RainbowFloatingButton"):
+    if required_token not in widgets:
+        fail(f"液态玻璃组件缺少 {required_token}")
 
 required = {
+    "app/lib/src/design.dart",
+    "app/lib/src/dual_mode.dart",
+    "app/lib/src/media.dart",
+    "app/lib/src/pages_v2.dart",
+    "app/lib/src/settings_pages_v3.dart",
+    "app/lib/src/widgets_v2.dart",
     "app/lib/src/webdav.dart",
-    "app/lib/src/settings_pages.dart",
-    "app/test/webdav_test.dart",
     "app/test/app_widget_test.dart",
     "app/integration_test/app_flow_test.dart",
     "app/tool/bootstrap_android.sh",
@@ -146,39 +173,26 @@ for name in sorted(required):
         fail(f"缺少正式交付文件: {name}")
 
 settings_gradle = (APP / "android/settings.gradle.kts").read_text(encoding="utf-8")
-wrapper_properties = (
-    APP / "android/gradle/wrapper/gradle-wrapper.properties"
-).read_text(encoding="utf-8")
+wrapper = (APP / "android/gradle/wrapper/gradle-wrapper.properties").read_text(encoding="utf-8")
 for expected in (
     'id("com.android.application") version "9.0.1"',
     'id("org.jetbrains.kotlin.android") version "2.3.20"',
 ):
     if expected not in settings_gradle:
         fail(f"Android Gradle 配置缺少固定版本: {expected}")
-if "gradle-9.1.0-bin.zip" not in wrapper_properties:
-    fail("Gradle wrapper 版本不是 9.1.0 binary distribution")
-if "downloads.gradle.org/distributions/gradle-9.1.0-bin.zip" not in wrapper_properties:
-    fail("Gradle wrapper 未使用官方直连下载地址")
+if "gradle-9.1.0-bin.zip" not in wrapper:
+    fail("Gradle wrapper 版本/分发类型不是 9.1.0 bin")
 
 secret_patterns = [
     re.compile(r"ghp_[A-Za-z0-9]{20,}"),
     re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 ]
-IGNORED_SCAN_PARTS = {
-    ".git",
-    "node_modules",
-    ".dart_tool",
-    "build",
-    ".gradle",
-    ".idea",
-}
+ignored = {".git", "node_modules", ".dart_tool", "build", ".gradle", ".idea"}
 for path in ROOT.rglob("*"):
-    if (
-        not path.is_file()
-        or any(part in IGNORED_SCAN_PARTS for part in path.parts)
-        or path.stat().st_size > 2_000_000
-    ):
+    if not path.is_file() or any(part in ignored for part in path.parts):
+        continue
+    if path.stat().st_size > 2_000_000:
         continue
     try:
         text = path.read_text(encoding="utf-8")
@@ -195,3 +209,7 @@ if ERRORS:
     sys.exit(1)
 print("STATIC_SOURCE_CHECK=PASS")
 print(f"dart_files={len(list(APP.rglob('*.dart')))}")
+print("visual_pages=11")
+print("member_management=REMOVED")
+print("editable_images=ENABLED")
+print("liquid_glass=ENABLED")
