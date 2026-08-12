@@ -163,7 +163,8 @@ class ToolingTest(unittest.TestCase):
         icon = app / 'assets/app_icon.png'
         self.assertIn('version "9.0.1"', settings)
         self.assertIn('version "2.3.20"', settings)
-        self.assertIn('gradle-9.1.0-all.zip', wrapper)
+        self.assertIn('gradle-9.1.0-bin.zip', wrapper)
+        self.assertIn('downloads.gradle.org/distributions/gradle-9.1.0-bin.zip', wrapper)
         self.assertIn('android.permission.INTERNET', manifest)
         self.assertIn('android:usesCleartextTraffic="true"', manifest)
         self.assertTrue(icon.is_file())

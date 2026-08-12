@@ -145,7 +145,6 @@ for name in sorted(required):
     if not (ROOT / name).exists():
         fail(f"缺少正式交付文件: {name}")
 
-
 settings_gradle = (APP / "android/settings.gradle.kts").read_text(encoding="utf-8")
 wrapper_properties = (
     APP / "android/gradle/wrapper/gradle-wrapper.properties"
@@ -156,8 +155,10 @@ for expected in (
 ):
     if expected not in settings_gradle:
         fail(f"Android Gradle 配置缺少固定版本: {expected}")
-if "gradle-9.1.0-all.zip" not in wrapper_properties:
-    fail("Gradle wrapper 版本不是 9.1.0")
+if "gradle-9.1.0-bin.zip" not in wrapper_properties:
+    fail("Gradle wrapper 版本不是 9.1.0 binary distribution")
+if "downloads.gradle.org/distributions/gradle-9.1.0-bin.zip" not in wrapper_properties:
+    fail("Gradle wrapper 未使用官方直连下载地址")
 
 secret_patterns = [
     re.compile(r"ghp_[A-Za-z0-9]{20,}"),
