@@ -7,6 +7,7 @@ on:
       - 'app/lib/**'
       - 'app/assets/**'
       - 'app/test/**'
+      - 'app/tool/**'
       - 'miniprogram/**'
       - '.github/workflows/visual-review.yml'
 
@@ -19,7 +20,7 @@ env:
 jobs:
   golden:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
     defaults:
       run:
         working-directory: app
@@ -37,20 +38,31 @@ jobs:
       - run: python3 tool/static_source_check.py
       - run: python3 tool/test_tooling.py
       - run: bash tool/bootstrap_android.sh
-      - name: 生成十二页 Golden
-        run: flutter test --update-goldens test/visual_review_test.dart
+      - name: 生成 11 页基线与交互状态截图
+        run: |
+          rm -rf visual_review/goldens visual_review/interactions
+          mkdir -p visual_review/goldens visual_review/interactions
+          flutter test --update-goldens test/visual_review_test.dart
+          flutter test --update-goldens test/interaction_visual_test.dart
       - run: python3 -m pip install --disable-pip-version-check pillow
-      - run: python3 tool/build_static_visual_review.py
+      - name: 视觉识别与截图数量门禁
+        run: |
+          count=$(find visual_review/goldens visual_review/interactions -type f -name '*.png' | wc -l)
+          test "$count" -ge 20
+          test "$count" -lt 100
+          echo "$count" > visual_review/SCREENSHOT_COUNT.txt
+          python3 tool/inspect_ui_gallery.py
+          python3 tool/build_static_visual_review.py
       - uses: actions/upload-artifact@v7
         with:
-          name: visual-review-goldens-${{ github.sha }}
+          name: visual-review-liquid-glass-${{ github.sha }}
           path: app/visual_review
           if-no-files-found: error
           retention-days: 30
 
   emulator:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 65
     defaults:
       run:
         working-directory: app
