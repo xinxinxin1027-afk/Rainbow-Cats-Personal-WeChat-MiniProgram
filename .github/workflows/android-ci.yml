@@ -56,9 +56,11 @@ jobs:
         run: flutter test test/store_test.dart --reporter expanded
       - name: WebDAV 与 Server 接口测试
         run: flutter test test/webdav_test.dart --reporter expanded
-      - name: Widget 导航、设置、任务与成员回归测试
+      - name: Widget 双人、玻璃 UI、任务、商城与图片回归
         run: flutter test test/app_widget_test.dart --reporter expanded
-      - name: 多尺寸布局碰撞测试
+      - name: 全功能按钮矩阵
+        run: flutter test test/button_matrix_test.dart --reporter expanded
+      - name: 55 个多尺寸布局碰撞测试
         shell: bash
         run: |
           set +e
