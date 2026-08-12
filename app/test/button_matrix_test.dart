@@ -12,6 +12,35 @@ import 'package:rainbow_cats/src/widgets.dart';
 const String _image =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZeeQAAAAASUVORK5CYII=';
 
+Future<void> _reveal(
+  WidgetTester tester,
+  Finder finder, {
+  double delta = 260,
+}) async {
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      delta,
+      scrollable: find.byType(Scrollable).last,
+    );
+  } else {
+    await tester.ensureVisible(finder);
+  }
+  await tester.pumpAndSettle();
+  expect(finder, findsOneWidget);
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await _reveal(tester, finder);
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _clearFeedback(WidgetTester tester) async {
+  await tester.pump(const Duration(seconds: 5));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   RainbowStore store() => RainbowStore(
         MemoryRainbowStorage(),
@@ -37,7 +66,7 @@ void main() {
     RainbowMediaStore.instance.resetForTest();
   });
 
-  testWidgets('按钮矩阵：首页、四主导航、三统计入口和首页图片编辑',
+  testWidgets('按钮矩阵：首页、四主导航、三统计入口和三张首页图片编辑',
       (WidgetTester tester) async {
     final RainbowStore value = store();
     await tester.pumpWidget(RainbowCatsApp(store: value));
@@ -51,9 +80,20 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-0')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('edit-home-image-0')));
-    await tester.pumpAndSettle();
-    expect(RainbowMediaStore.instance.homeImageAt(0), _image);
+    for (int index = 0; index < 3; index++) {
+      if (index > 0) {
+        await tester.drag(
+          find.byKey(const ValueKey<String>('home-carousel')),
+          const Offset(-520, 0),
+        );
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(
+        find.byKey(ValueKey<String>('edit-home-image-$index')),
+      );
+      await tester.pumpAndSettle();
+      expect(RainbowMediaStore.instance.homeImageAt(index), _image);
+    }
 
     for (final String label in <String>[
       '待完成任务',
@@ -81,35 +121,52 @@ void main() {
       find.byKey(const ValueKey<String>('mission-title')),
       '按钮任务',
     );
+    await _reveal(
+      tester,
+      find.byKey(const ValueKey<String>('mission-credit-slider')),
+    );
     await tester.drag(
       find.byKey(const ValueKey<String>('mission-credit-slider')),
       const Offset(60, 0),
     );
-    await tester.tap(find.byKey(const ValueKey<String>('save-mission')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('save-mission')),
+    );
     expect(value.missions.first.title, '按钮任务');
 
     await tester.tap(find.text('按钮任务'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('star-mission')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('star-mission')),
+    );
     expect(value.missions.first.starred, isTrue);
 
-    await tester.tap(find.byKey(const ValueKey<String>('edit-mission')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('edit-mission')),
+    );
     await tester.enterText(
       find.byKey(const ValueKey<String>('mission-title')),
       '按钮任务改',
     );
-    await tester.tap(find.byKey(const ValueKey<String>('save-mission')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('save-mission')),
+    );
     expect(value.missions.first.title, '按钮任务改');
 
-    await tester.tap(find.byKey(const ValueKey<String>('delete-mission')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('delete-mission')),
+    );
     await tester.tap(find.text('删除').last);
     await tester.pumpAndSettle();
-    expect(value.missions.any((Mission item) => item.title == '按钮任务改'), isFalse);
+    expect(
+      value.missions.any((Mission item) => item.title == '按钮任务改'),
+      isFalse,
+    );
   });
 
   testWidgets('按钮矩阵：完成对方任务', (WidgetTester tester) async {
@@ -121,12 +178,14 @@ void main() {
       harness(MissionDetailPage(store: value, missionId: target.id)),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('complete-mission')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('complete-mission')),
+    );
     expect(target.completed, isTrue);
   });
 
-  testWidgets('按钮矩阵：商城新增、图片、滑杆、星标、编辑和删除',
+  testWidgets('按钮矩阵：商城新增、列表图片、滑杆、星标、编辑和删除',
       (WidgetTester tester) async {
     final RainbowStore value = store();
     await tester.pumpWidget(RainbowCatsApp(store: value));
@@ -141,33 +200,54 @@ void main() {
       find.byKey(const ValueKey<String>('reward-title')),
       '按钮商品',
     );
+    await _reveal(
+      tester,
+      find.byKey(const ValueKey<String>('reward-cost-slider')),
+    );
     await tester.drag(
       find.byKey(const ValueKey<String>('reward-cost-slider')),
       const Offset(50, 0),
     );
-    await tester.tap(find.byKey(const ValueKey<String>('save-reward')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('save-reward')),
+    );
     final Reward created = value.rewards.first;
+    expect(created.title, '按钮商品');
     expect(created.imageAsset, _image);
 
+    await _tapVisible(
+      tester,
+      find.byKey(ValueKey<String>('edit-reward-list-${created.id}')),
+    );
+    expect(created.imageAsset, _image);
     await tester.tap(find.text('按钮商品'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('star-reward')));
-    await tester.pumpAndSettle();
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('star-reward')),
+    );
     expect(created.starred, isTrue);
 
-    await tester.tap(find.byKey(const ValueKey<String>('edit-reward')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('edit-reward')),
+    );
     await tester.enterText(
       find.byKey(const ValueKey<String>('reward-title')),
       '按钮商品改',
     );
-    await tester.tap(find.byKey(const ValueKey<String>('save-reward')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('save-reward')),
+    );
     expect(created.title, '按钮商品改');
 
-    await tester.tap(find.byKey(const ValueKey<String>('delete-reward')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('delete-reward')),
+    );
     await tester.tap(find.text('删除').last);
     await tester.pumpAndSettle();
     expect(value.rewards.contains(created), isFalse);
@@ -188,14 +268,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(target.imageAsset, _image);
     final int before = value.currentUser.credit;
-    await tester.tap(find.byKey(const ValueKey<String>('buy-reward')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('buy-reward')),
+    );
     expect(target.available, isFalse);
     expect(value.currentUser.credit, lessThan(before));
     expect(value.currentInventory.isNotEmpty, isTrue);
   });
 
-  testWidgets('按钮矩阵：仓库双方头像、积分、设置、使用记录和图片编辑',
+  testWidgets('按钮矩阵：仓库双方头像、列表图片、积分、设置和使用记录',
       (WidgetTester tester) async {
     final RainbowStore value = store();
     await tester.pumpWidget(RainbowCatsApp(store: value));
@@ -209,19 +291,36 @@ void main() {
       expect(user.avatarAsset, _image);
     }
 
-    await tester.tap(find.byKey(const ValueKey<String>('inventory-used-tab')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey<String>('inventory-unused-tab')));
-    await tester.pumpAndSettle();
+    final InventoryItem? listed = value.currentInventory.firstOrNull;
+    if (listed != null) {
+      await _tapVisible(
+        tester,
+        find.byKey(ValueKey<String>('edit-inventory-list-${listed.id}')),
+      );
+      expect(listed.imageAsset, _image);
+    }
 
-    await tester.tap(find.byKey(const ValueKey<String>('open-ledger')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('inventory-used-tab')),
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('inventory-unused-tab')),
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('open-ledger')),
+    );
     expect(find.text('积分明细'), findsOneWidget);
-    await tester.pageBack();
+    await tester.tap(find.byKey(const ValueKey<String>('top-back')));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey<String>('open-settings')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('open-settings')),
+    );
     expect(find.text('设置与同步'), findsOneWidget);
   });
 
@@ -242,65 +341,72 @@ void main() {
     await tester.pumpAndSettle();
     expect(target.imageAsset, _image);
 
-    await tester.tap(find.byKey(const ValueKey<String>('use-inventory')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('use-inventory')),
+    );
     await tester.tap(find.byKey(const ValueKey<String>('cancel-use-inventory')));
     await tester.pumpAndSettle();
     expect(target.used, isFalse);
 
-    await tester.tap(find.byKey(const ValueKey<String>('use-inventory')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('use-inventory')),
+    );
     await tester.tap(find.byKey(const ValueKey<String>('confirm-use-inventory')));
     await tester.pumpAndSettle();
     expect(target.used, isTrue);
 
-    await tester.tap(find.byKey(const ValueKey<String>('delete-inventory')));
-    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('delete-inventory')),
+    );
     await tester.tap(find.text('删除').last);
     await tester.pumpAndSettle();
     expect(value.inventoryById(target.id), isNull);
   });
 
-  testWidgets('按钮矩阵：设置页所有本地和无配置网络按钮均可点击',
+  testWidgets('按钮矩阵：设置页全部本地及无配置网络按钮均真实可点击',
       (WidgetTester tester) async {
     final RainbowStore value = store();
     await tester.pumpWidget(harness(SettingsPage(store: value)));
     await tester.pumpAndSettle();
 
-    for (final String key in <String>[
-      'toggle-webdav-password',
-      'toggle-server-token',
-      'auto-sync-switch',
-      'save-settings',
-      'webdav-test',
-      'webdav-upload',
-      'webdav-sync',
-      'server-health',
-      'copy-backup',
-    ]) {
-      final Finder finder = find.byKey(ValueKey<String>(key));
-      await tester.ensureVisible(finder);
-      await tester.tap(finder);
-      await tester.pumpAndSettle();
+    Future<void> tapAndClear(String key) async {
+      await _tapVisible(tester, find.byKey(ValueKey<String>(key)));
       expect(tester.takeException(), isNull, reason: '按钮 $key 出现异常');
+      await _clearFeedback(tester);
     }
 
-    for (final String key in <String>['webdav-restore', 'webdav-delete', 'reset-data']) {
-      final Finder finder = find.byKey(ValueKey<String>(key));
-      await tester.ensureVisible(finder);
-      await tester.tap(finder);
-      await tester.pumpAndSettle();
+    await tapAndClear('toggle-webdav-password');
+    await tapAndClear('auto-sync-switch');
+    await tapAndClear('save-settings');
+    await tapAndClear('webdav-test');
+    await tapAndClear('webdav-upload');
+    await tapAndClear('webdav-sync');
+
+    for (final String key in <String>['webdav-restore', 'webdav-delete']) {
+      await _tapVisible(tester, find.byKey(ValueKey<String>(key)));
       expect(find.byKey(const ValueKey<String>('dialog-cancel')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey<String>('dialog-cancel')));
       await tester.pumpAndSettle();
     }
 
+    await tapAndClear('toggle-server-token');
+    await tapAndClear('server-health');
+    await tapAndClear('copy-backup');
+
     await Clipboard.setData(ClipboardData(text: value.exportData()));
-    final Finder importButton = find.byKey(const ValueKey<String>('import-backup'));
-    await tester.ensureVisible(importButton);
-    await tester.tap(importButton);
-    await tester.pumpAndSettle();
+    await tapAndClear('import-backup');
     expect(value.users.length, 2);
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey<String>('reset-data')),
+    );
+    expect(find.byKey(const ValueKey<String>('dialog-cancel')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey<String>('dialog-cancel')));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
