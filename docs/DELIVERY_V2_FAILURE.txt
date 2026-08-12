@@ -1,5 +1,5 @@
-run=https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/actions/runs/31627999112
-head_sha=b4ccaa8d38a333cc1aae91ed68b93b45df0e096a
+run=https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/actions/runs/31628163026
+head_sha=55780fa80e349c1ba47b375dc29199df20a896d8
 prepare=failure
 analyze=skipped
 tests=skipped
