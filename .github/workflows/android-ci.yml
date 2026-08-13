@@ -60,8 +60,29 @@ jobs:
         run: flutter test test/app_widget_test.dart --reporter expanded
       - name: 双人身份切换且无成员管理
         run: flutter test test/dual_identity_test.dart --reporter expanded
-      - name: 全功能按钮矩阵
-        run: flutter test test/button_matrix_test.dart --reporter expanded
+
+      - name: 按钮矩阵 · 首页导航与图片
+        timeout-minutes: 3
+        run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：首页导航、统计入口与三张图片编辑'
+      - name: 按钮矩阵 · 任务全操作
+        timeout-minutes: 3
+        run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：任务新增、滑杆、星标、编辑、完成和删除'
+      - name: 按钮矩阵 · 商城全操作
+        timeout-minutes: 3
+        run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：商城新增、图片、滑杆、星标、编辑、兑换和删除'
+      - name: 按钮矩阵 · 双方头像与仓库入口
+        timeout-minutes: 3
+        run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：双方头像、仓库图片、筛选、积分与设置入口'
+      - name: 按钮矩阵 · 仓库物品全操作
+        timeout-minutes: 3
+        run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：仓库物品图片、使用取消/确认和删除'
+      - name: 按钮矩阵 · 设置全部操作
+        timeout-minutes: 3
+        run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：设置页全部本地和无配置网络操作'
+      - name: 按钮矩阵 · 左滑动作
+        timeout-minutes: 3
+        run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：左滑星标和删除动作'
+
       - name: 55 个多尺寸布局碰撞测试
         shell: bash
         run: |
