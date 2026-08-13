@@ -203,3 +203,24 @@ Release 工作流会重新执行上述门禁，并额外执行：
 - Pixel 6 / Android API 35 最终 Release APK 实测：✅
 - Integration Test：✅
 - Universal APK SHA-256：40181c0238b1ebac30fb0539b4f358a6b56148098f66d628d08b1f5131a25c73
+
+## v1.0.0 液态玻璃 UI 全量重构复验
+
+- Release：https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/releases/tag/v1.0.0
+- APK 源码 Commit：c1259f0db746258906ed14b1f2cde59c3a6de7d1
+- GitHub Actions：https://github.com/xinxinxin1027-afk/Rainbow-Cats-Personal-WeChat-MiniProgram/actions/runs/31704328793
+- dwell-on-something 暖色 / 圆角视觉体系迁移：✅
+- Flutter 独立液态玻璃（模糊、高光、透明层、柔和阴影）：✅
+- 旧整块粉色添加页顶栏移除：✅
+- 全局圆角卡片 / 输入框 / 顶栏 / 底栏：✅
+- 成员管理 UI / 路由移除：✅
+- 旧多人数据自动收敛到两人：✅
+- 首页轮播、双方头像、商城、仓库图片右下角半透明编辑：✅
+- 系统图片选择与本地持久化：✅
+- 全功能按钮矩阵：✅
+- 11 页面 × 5 尺寸 = 55 个布局组合：✅
+- 页面 + 交互视觉截图：31 张（<100）：✅
+- 自动视觉识别：无白屏 / 黑屏 / 旧整宽粉色顶栏：✅
+- Pixel 6 / Android API 35 Release APK 生命周期与 Integration Test：✅
+- Debug / Universal Release / 分架构 APK：✅
+- Universal APK SHA-256：0f8a2c77dbfce269a0f0539be324911af04b6834340026ad176e9ad1ce68dc9a
