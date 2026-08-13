@@ -128,7 +128,9 @@ void main() {
       if (call.method == 'Clipboard.getData') {
         return <String, dynamic>{'text': clipboardText};
       }
-      if (call.method == 'Clipboard.hasStrings') return true;
+      if (call.method == 'Clipboard.hasStrings') {
+        return <String, dynamic>{'value': clipboardText.isNotEmpty};
+      }
       return null;
     });
     addTearDown(
