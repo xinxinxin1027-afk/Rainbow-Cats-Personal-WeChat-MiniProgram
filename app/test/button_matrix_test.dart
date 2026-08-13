@@ -20,10 +20,15 @@ void phoneTestWidgets(String description, WidgetTesterCallback body) {
   });
 }
 
+Future<void> boundedSettle(WidgetTester tester) async {
+  for (int index = 0; index < 30; index += 1) {
+    await tester.pump(const Duration(milliseconds: 40));
+    if (!tester.binding.hasScheduledFrame) return;
+  }
+}
+
 Finder _verticalScrollable({Key? ownerKey}) {
-  Finder result = find.byType(Scrollable).evaluate().isEmpty
-      ? find.byType(Scrollable)
-      : find.byType(Scrollable);
+  Finder result = find.byType(Scrollable);
   if (ownerKey != null) {
     final Finder owned = find.descendant(
       of: find.byKey(ownerKey),
@@ -74,13 +79,13 @@ Future<void> tapVisible(
 }) async {
   await reveal(tester, finder, scrollOwnerKey: scrollOwnerKey);
   await tester.tap(finder);
-  await tester.pumpAndSettle();
+  await boundedSettle(tester);
   expect(tester.takeException(), isNull);
 }
 
 Future<void> clearFeedback(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 5));
-  await tester.pump(const Duration(milliseconds: 350));
+  await boundedSettle(tester);
 }
 
 void main() {
@@ -112,34 +117,34 @@ void main() {
       (WidgetTester tester) async {
     final RainbowStore store = buildStore();
     await tester.pumpWidget(RainbowCatsApp(store: store));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
 
     for (int index = 0; index < 4; index++) {
       await tester.tap(find.byKey(ValueKey<String>('bottom-tab-$index')));
-      await tester.pumpAndSettle();
+      await boundedSettle(tester);
       expect(tester.takeException(), isNull);
     }
 
     await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-0')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     for (int index = 0; index < 3; index++) {
       if (index > 0) {
         await tester.drag(
           find.byKey(const ValueKey<String>('home-carousel')),
           const Offset(-360, 0),
         );
-        await tester.pumpAndSettle();
+        await boundedSettle(tester);
       }
       await tester.tap(find.byKey(ValueKey<String>('edit-home-image-$index')));
-      await tester.pumpAndSettle();
+      await boundedSettle(tester);
       expect(RainbowMediaStore.instance.homeImageAt(index), _image);
     }
 
     for (final String label in <String>['待完成任务', '可兑换商品', '仓库物品']) {
       await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-0')));
-      await tester.pumpAndSettle();
+      await boundedSettle(tester);
       await tester.tap(find.text(label));
-      await tester.pumpAndSettle();
+      await boundedSettle(tester);
       expect(tester.takeException(), isNull);
     }
   });
@@ -148,11 +153,11 @@ void main() {
       (WidgetTester tester) async {
     final RainbowStore store = buildStore();
     await tester.pumpWidget(RainbowCatsApp(store: store));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-1')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(find.byKey(const ValueKey<String>('add-mission')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.enterText(
       find.byKey(const ValueKey<String>('mission-title')),
       '按钮任务',
@@ -166,7 +171,7 @@ void main() {
     expect(store.missions.first.title, '按钮任务');
 
     await tester.tap(find.text('按钮任务'));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tapVisible(tester, find.byKey(const ValueKey<String>('star-mission')));
     expect(store.missions.first.starred, isTrue);
     await tapVisible(tester, find.byKey(const ValueKey<String>('edit-mission')));
@@ -178,10 +183,10 @@ void main() {
     expect(store.missions.first.title, '按钮任务改');
 
     await tester.tap(find.text('按钮任务改'));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tapVisible(tester, find.byKey(const ValueKey<String>('delete-mission')));
     await tester.tap(find.text('删除').last);
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     expect(store.missions.any((Mission item) => item.title == '按钮任务改'), isFalse);
 
     final Mission partnerMission = store.missions.firstWhere(
@@ -190,7 +195,7 @@ void main() {
     await tester.pumpWidget(
       harness(MissionDetailPage(store: store, missionId: partnerMission.id)),
     );
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tapVisible(tester, find.byKey(const ValueKey<String>('complete-mission')));
     expect(partnerMission.completed, isTrue);
   });
@@ -199,13 +204,13 @@ void main() {
       (WidgetTester tester) async {
     final RainbowStore store = buildStore();
     await tester.pumpWidget(RainbowCatsApp(store: store));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-2')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(find.byKey(const ValueKey<String>('add-reward')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(find.byKey(const ValueKey<String>('edit-market-form-image')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.enterText(
       find.byKey(const ValueKey<String>('reward-title')),
       '按钮商品',
@@ -225,7 +230,7 @@ void main() {
       find.byKey(ValueKey<String>('edit-reward-list-${created.id}')),
     );
     await tester.tap(find.text('按钮商品'));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tapVisible(tester, find.byKey(const ValueKey<String>('star-reward')));
     expect(created.starred, isTrue);
     await tapVisible(tester, find.byKey(const ValueKey<String>('edit-reward')));
@@ -236,10 +241,10 @@ void main() {
     await tapVisible(tester, find.byKey(const ValueKey<String>('save-reward')));
     expect(created.title, '按钮商品改');
     await tester.tap(find.text('按钮商品改'));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tapVisible(tester, find.byKey(const ValueKey<String>('delete-reward')));
     await tester.tap(find.text('删除').last);
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     expect(store.rewards.contains(created), isFalse);
 
     final Reward buyable = store.rewards.firstWhere(
@@ -248,11 +253,11 @@ void main() {
     await tester.pumpWidget(
       harness(MarketDetailPage(store: store, rewardId: buyable.id)),
     );
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(
       find.byKey(ValueKey<String>('edit-reward-detail-${buyable.id}')),
     );
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     final int before = store.currentUser.credit;
     await tapVisible(tester, find.byKey(const ValueKey<String>('buy-reward')));
     expect(buyable.available, isFalse);
@@ -264,13 +269,13 @@ void main() {
       (WidgetTester tester) async {
     final RainbowStore store = buildStore();
     await tester.pumpWidget(RainbowCatsApp(store: store));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(find.byKey(const ValueKey<String>('bottom-tab-3')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
 
     for (final UserProfile user in store.users.take(2)) {
       await tester.tap(find.byKey(ValueKey<String>('edit-avatar-${user.id}')));
-      await tester.pumpAndSettle();
+      await boundedSettle(tester);
       expect(user.avatarAsset, _image);
     }
     final InventoryItem listed = store.currentInventory.first;
@@ -284,7 +289,7 @@ void main() {
     await tapVisible(tester, find.byKey(const ValueKey<String>('open-ledger')));
     expect(find.text('积分明细'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey<String>('top-back')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tapVisible(tester, find.byKey(const ValueKey<String>('open-settings')));
     expect(find.text('设置与同步'), findsOneWidget);
   });
@@ -296,24 +301,24 @@ void main() {
       (InventoryItem value) => !value.used,
     );
     await tester.pumpWidget(harness(ItemDetailPage(store: store, itemId: item.id)));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(
       find.byKey(ValueKey<String>('edit-inventory-detail-${item.id}')),
     );
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     expect(item.imageAsset, _image);
 
     await tapVisible(tester, find.byKey(const ValueKey<String>('use-inventory')));
     await tester.tap(find.byKey(const ValueKey<String>('cancel-use-inventory')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     expect(item.used, isFalse);
     await tapVisible(tester, find.byKey(const ValueKey<String>('use-inventory')));
     await tester.tap(find.byKey(const ValueKey<String>('confirm-use-inventory')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     expect(item.used, isTrue);
     await tapVisible(tester, find.byKey(const ValueKey<String>('delete-inventory')));
     await tester.tap(find.text('删除').last);
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     expect(store.inventoryById(item.id), isNull);
   });
 
@@ -321,7 +326,7 @@ void main() {
       (WidgetTester tester) async {
     final RainbowStore store = buildStore();
     await tester.pumpWidget(harness(SettingsPage(store: store)));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     const Key scrollKey = ValueKey<String>('settings-scroll');
 
     Future<void> tapSetting(String key) async {
@@ -351,7 +356,7 @@ void main() {
       );
       expect(find.byKey(const ValueKey<String>('dialog-cancel')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey<String>('dialog-cancel')));
-      await tester.pumpAndSettle();
+      await boundedSettle(tester);
     }
     for (final String key in <String>[
       'toggle-server-token',
@@ -370,7 +375,7 @@ void main() {
     );
     expect(find.byKey(const ValueKey<String>('dialog-cancel')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey<String>('dialog-cancel')));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
   });
 
   phoneTestWidgets('按钮矩阵：左滑星标和删除动作', (WidgetTester tester) async {
@@ -403,16 +408,16 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.drag(find.text('滑动测试'), const Offset(-220, 0));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(find.text('星标'));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     expect(starred, isTrue);
     await tester.drag(find.text('滑动测试'), const Offset(-220, 0));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     await tester.tap(find.text('删除'));
-    await tester.pumpAndSettle();
+    await boundedSettle(tester);
     expect(deleted, isTrue);
   });
 }
