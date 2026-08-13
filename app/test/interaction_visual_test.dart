@@ -126,7 +126,22 @@ void main() {
       find.byKey(const ValueKey<String>('save-reward')),
     );
     await shot('22-market-created');
-    await tester.tap(find.text('抱抱券'));
+
+    // 商城使用惰性 ListView；截图画廊只负责验证视觉状态，列表项点击本身
+    // 已由 button_matrix_test 覆盖。这里按刚创建的数据 ID 进入详情，避免截图测试
+    // 依赖该卡片此刻是否已被 ListView 构建到 widget tree。
+    final Reward createdReward = store.rewards.firstWhere(
+      (Reward item) => item.title == '抱抱券',
+    );
+    final BuildContext marketContext = tester.element(find.byType(MarketPage));
+    Navigator.of(marketContext).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => MarketDetailPage(
+          store: store,
+          rewardId: createdReward.id,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await shot('23-market-detail');
     await tester.tap(find.byKey(const ValueKey<String>('top-back')));
