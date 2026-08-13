@@ -24,15 +24,30 @@ if 'android:usesCleartextTraffic=' not in text:
         'android:label="Rainbow Cats"\n        android:usesCleartextTraffic="true"',
         1,
     )
-text = text.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/app_icon"')
-text = text.replace(
-    'android:roundIcon="@mipmap/ic_launcher_round"',
-    'android:roundIcon="@drawable/app_icon"',
-)
+# 用户原图仍保留给 Android 12+ 启动画面；Launcher 本身优先使用 committed mipmap/adaptive 资源。
+# 旧的最小工具测试夹具没有 launcher 资源，因此仅在资源齐备时切换到标准链。
+launcher_probe = ANDROID / "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
+if launcher_probe.is_file():
+    text = text.replace('android:icon="@drawable/app_icon"', 'android:icon="@mipmap/ic_launcher"')
+    if 'android:roundIcon=' not in text:
+        text = text.replace(
+            'android:icon="@mipmap/ic_launcher"',
+            'android:icon="@mipmap/ic_launcher"\n        android:roundIcon="@mipmap/ic_launcher_round"',
+            1,
+        )
+    else:
+        text = text.replace(
+            'android:roundIcon="@drawable/app_icon"',
+            'android:roundIcon="@mipmap/ic_launcher_round"',
+        )
+else:
+    text = text.replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/app_icon"')
+    text = text.replace(
+        'android:roundIcon="@mipmap/ic_launcher_round"',
+        'android:roundIcon="@drawable/app_icon"',
+    )
 manifest.write_text(text, encoding="utf-8")
 
-# 保留用户上传的 PNG 作为图标源；Android 资源使用其无损 WebP 派生文件。
-# 某些 AAPT2 版本会在这张 PNG 的资源编译阶段异常退出，WebP 可稳定规避该解析路径。
 png_source = APP / "assets/app_icon.png"
 webp_source = APP / "assets/app_icon.webp"
 if not png_source.is_file():
@@ -45,6 +60,20 @@ stale_png = icon_dir / "app_icon.png"
 if stale_png.exists():
     stale_png.unlink()
 shutil.copyfile(webp_source, icon_dir / "app_icon.webp")
+
+# 正式工程使用标准 Launcher 时要求整套资源齐全。
+if launcher_probe.is_file():
+    launcher_files = (
+        ANDROID / "app/src/main/res/mipmap-anydpi/ic_launcher.xml",
+        ANDROID / "app/src/main/res/mipmap-anydpi/ic_launcher_round.xml",
+        ANDROID / "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+        ANDROID / "app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+        ANDROID / "app/src/main/res/drawable/ic_launcher_foreground.xml",
+        ANDROID / "app/src/main/res/values/colors.xml",
+    )
+    missing = [str(path.relative_to(ANDROID)) for path in launcher_files if not path.is_file()]
+    if missing:
+        raise SystemExit("缺少 Android Launcher 资源: " + ", ".join(missing))
 
 # 根页面已移除小程序顶部栏，系统状态栏改为浅色背景 + 深色图标。
 styles = ANDROID / "app/src/main/res/values/styles.xml"
@@ -72,7 +101,7 @@ for folder in ("drawable", "drawable-v21"):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(launch, encoding="utf-8")
 
-# Android 12+ 启动画面继续使用原粉色，图标换成用户提供的正式图标。
+# Android 12+ 启动画面继续使用原粉色和用户图标；Launcher 图标则使用 adaptive icon。
 values_v31 = ANDROID / "app/src/main/res/values-v31/styles.xml"
 values_v31.parent.mkdir(parents=True, exist_ok=True)
 values_v31.write_text(
