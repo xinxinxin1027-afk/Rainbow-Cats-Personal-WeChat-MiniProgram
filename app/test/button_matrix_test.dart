@@ -24,10 +24,12 @@ Finder _pageScrollable() {
   return find.byType(Scrollable).first;
 }
 
-Finder _settingsScrollable() => find.descendant(
+Finder _settingsScrollable() => find
+    .descendant(
       of: find.byKey(const ValueKey<String>('settings-scroll')),
       matching: find.byType(Scrollable),
-    );
+    )
+    .first;
 
 Future<void> _reveal(
   WidgetTester tester,
@@ -46,8 +48,6 @@ Future<void> _reveal(
   }
   expect(finder, findsOneWidget);
 
-  // WidgetTester.ensureVisible 只保证“露出来”，可能仍贴着底部导航栏。
-  // 这里把操作控件放到滚动视口中上部，确保真实 hit-test 不被浮层遮挡。
   await Scrollable.ensureVisible(
     tester.element(finder),
     alignment: 0.32,
@@ -77,12 +77,14 @@ Future<void> _tapVisible(
 }
 
 Future<void> _clearFeedback(WidgetTester tester) async {
-  // 推进 SnackBar 生命周期即可；不再 pumpAndSettle 等待 TextField 光标等长期动画。
   await tester.pump(const Duration(seconds: 5));
   await tester.pump(const Duration(milliseconds: 400));
 }
 
 void main() {
+  final TestWidgetsFlutterBinding binding =
+      TestWidgetsFlutterBinding.ensureInitialized();
+
   RainbowStore store() => RainbowStore(
         MemoryRainbowStorage(),
         clock: () => DateTime(2026, 8, 12, 12),
@@ -97,14 +99,16 @@ void main() {
         home: child,
       );
 
-  setUp(() {
+  setUp(() async {
+    await binding.setSurfaceSize(const Size(430, 932));
     RainbowImagePicker.debugPickerOverride = () async => _image;
     RainbowMediaStore.instance.resetForTest();
   });
 
-  tearDown(() {
+  tearDown(() async {
     RainbowImagePicker.debugPickerOverride = null;
     RainbowMediaStore.instance.resetForTest();
+    await binding.setSurfaceSize(null);
   });
 
   testWidgets('按钮矩阵：首页、四主导航、三统计入口和三张首页图片编辑',
