@@ -52,13 +52,9 @@ Future<void> reveal(
   Key? scrollOwnerKey,
 }) async {
   final Finder scrollable = _verticalScrollable(ownerKey: scrollOwnerKey);
-  if (finder.evaluate().isEmpty) {
-    await tester.scrollUntilVisible(
-      finder,
-      180,
-      scrollable: scrollable,
-      maxScrolls: 30,
-    );
+  for (int index = 0; finder.evaluate().isEmpty && index < 30; index += 1) {
+    await tester.drag(scrollable, const Offset(0, -180));
+    await boundedSettle(tester);
   }
   expect(finder, findsOneWidget);
   await Scrollable.ensureVisible(
