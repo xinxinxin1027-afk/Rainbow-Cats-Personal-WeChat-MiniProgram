@@ -76,9 +76,15 @@ jobs:
       - name: 按钮矩阵 · 仓库物品全操作
         timeout-minutes: 3
         run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：仓库物品图片、使用取消/确认和删除'
-      - name: 按钮矩阵 · 设置全部操作
+      - name: 设置按钮 · 本地控件
         timeout-minutes: 3
-        run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：设置页全部本地和无配置网络操作'
+        run: flutter test test/settings_button_test.dart --reporter expanded --plain-name '设置按钮：密码显示、自动同步、保存与 Token 显示'
+      - name: 设置按钮 · 远端无配置操作
+        timeout-minutes: 3
+        run: flutter test test/settings_button_test.dart --reporter expanded --plain-name '设置按钮：WebDAV 无配置操作、确认弹窗与 Server 健康检查'
+      - name: 设置按钮 · 备份导入与重置
+        timeout-minutes: 3
+        run: flutter test test/settings_button_test.dart --reporter expanded --plain-name '设置按钮：复制、剪贴板导入与重置确认'
       - name: 按钮矩阵 · 左滑动作
         timeout-minutes: 3
         run: flutter test test/button_matrix_test.dart --reporter expanded --plain-name '按钮矩阵：左滑星标和删除动作'
