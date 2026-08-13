@@ -20,6 +20,24 @@ if [[ -f test/widget_test.dart ]] && grep -q 'MyApp' test/widget_test.dart; then
 fi
 
 python3 tool/patch_android.py
+
+# Launcher 图标必须走 Android 标准 mipmap/adaptive-icon 链，禁止再退回单张 drawable。
+MANIFEST="android/app/src/main/AndroidManifest.xml"
+grep -q 'android:icon="@mipmap/ic_launcher"' "$MANIFEST"
+grep -q 'android:roundIcon="@mipmap/ic_launcher_round"' "$MANIFEST"
+for resource in \
+  android/app/src/main/res/mipmap-anydpi/ic_launcher.xml \
+  android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml \
+  android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml \
+  android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml \
+  android/app/src/main/res/drawable/ic_launcher_foreground.xml \
+  android/app/src/main/res/values/colors.xml; do
+  test -s "$resource"
+done
+grep -q '<adaptive-icon' android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+grep -q '<adaptive-icon' android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+echo "ANDROID_LAUNCHER_ICON=PASS"
+
 flutter pub get
 
 # 上面的资源/样式生成器会重写 Dart 文件。统一在 bootstrap 末尾格式化，
