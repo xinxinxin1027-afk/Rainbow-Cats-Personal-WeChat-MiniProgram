@@ -12,33 +12,74 @@ import 'package:rainbow_cats/src/widgets.dart';
 const String _image =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZeeQAAAAASUVORK5CYII=';
 
+Finder _pageScrollable() {
+  final Finder listViews = find.byType(ListView);
+  if (listViews.evaluate().isNotEmpty) {
+    final Finder scrollables = find.descendant(
+      of: listViews.last,
+      matching: find.byType(Scrollable),
+    );
+    if (scrollables.evaluate().isNotEmpty) return scrollables.first;
+  }
+  return find.byType(Scrollable).first;
+}
+
+Finder _settingsScrollable() => find.descendant(
+      of: find.byKey(const ValueKey<String>('settings-scroll')),
+      matching: find.byType(Scrollable),
+    );
+
 Future<void> _reveal(
   WidgetTester tester,
   Finder finder, {
-  double delta = 260,
+  Finder? scrollable,
 }) async {
   if (finder.evaluate().isEmpty) {
+    final Finder targetScrollable = scrollable ?? _pageScrollable();
+    expect(targetScrollable, findsOneWidget);
     await tester.scrollUntilVisible(
       finder,
-      delta,
-      scrollable: find.byType(Scrollable).last,
+      180,
+      scrollable: targetScrollable,
+      maxScrolls: 30,
     );
-  } else {
-    await tester.ensureVisible(finder);
   }
-  await tester.pumpAndSettle();
   expect(finder, findsOneWidget);
+
+  // WidgetTester.ensureVisible 只保证“露出来”，可能仍贴着底部导航栏。
+  // 这里把操作控件放到滚动视口中上部，确保真实 hit-test 不被浮层遮挡。
+  await Scrollable.ensureVisible(
+    tester.element(finder),
+    alignment: 0.32,
+    duration: Duration.zero,
+  );
+  await tester.pump();
+
+  final Rect rect = tester.getRect(finder);
+  final double logicalHeight =
+      tester.view.physicalSize.height / tester.view.devicePixelRatio;
+  expect(rect.top, greaterThanOrEqualTo(0));
+  expect(
+    rect.bottom,
+    lessThan(logicalHeight - 24),
+    reason: '目标按钮仍位于不可安全点击的底部区域：$rect / $logicalHeight',
+  );
 }
 
-Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
-  await _reveal(tester, finder);
+Future<void> _tapVisible(
+  WidgetTester tester,
+  Finder finder, {
+  Finder? scrollable,
+}) async {
+  await _reveal(tester, finder, scrollable: scrollable);
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
 
 Future<void> _clearFeedback(WidgetTester tester) async {
+  // 推进 SnackBar 生命周期即可；不再 pumpAndSettle 等待 TextField 光标等长期动画。
   await tester.pump(const Duration(seconds: 5));
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(milliseconds: 400));
 }
 
 void main() {
@@ -361,6 +402,7 @@ void main() {
       tester,
       find.byKey(const ValueKey<String>('delete-inventory')),
     );
+    expect(find.text('删除物品'), findsOneWidget);
     await tester.tap(find.text('删除').last);
     await tester.pumpAndSettle();
     expect(value.inventoryById(target.id), isNull);
@@ -371,9 +413,15 @@ void main() {
     final RainbowStore value = store();
     await tester.pumpWidget(harness(SettingsPage(store: value)));
     await tester.pumpAndSettle();
+    final Finder settingsScroll = _settingsScrollable();
+    expect(settingsScroll, findsOneWidget);
 
     Future<void> tapAndClear(String key) async {
-      await _tapVisible(tester, find.byKey(ValueKey<String>(key)));
+      await _tapVisible(
+        tester,
+        find.byKey(ValueKey<String>(key)),
+        scrollable: settingsScroll,
+      );
       expect(tester.takeException(), isNull, reason: '按钮 $key 出现异常');
       await _clearFeedback(tester);
     }
@@ -386,7 +434,11 @@ void main() {
     await tapAndClear('webdav-sync');
 
     for (final String key in <String>['webdav-restore', 'webdav-delete']) {
-      await _tapVisible(tester, find.byKey(ValueKey<String>(key)));
+      await _tapVisible(
+        tester,
+        find.byKey(ValueKey<String>(key)),
+        scrollable: settingsScroll,
+      );
       expect(find.byKey(const ValueKey<String>('dialog-cancel')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey<String>('dialog-cancel')));
       await tester.pumpAndSettle();
@@ -403,6 +455,7 @@ void main() {
     await _tapVisible(
       tester,
       find.byKey(const ValueKey<String>('reset-data')),
+      scrollable: settingsScroll,
     );
     expect(find.byKey(const ValueKey<String>('dialog-cancel')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey<String>('dialog-cancel')));
